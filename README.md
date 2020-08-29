@@ -1,4 +1,4 @@
-RemoteMono								{#mainpage}
+RemoteMono
 ==========
 
 RemoteMono is a modern C++ (requires C++17) header-only library that allows you to call the functions of the [Mono Embedded API](http://docs.go-mono.com/?link=root:/embed) in a remote process. It was mainly intended for hacking Unity games, but it can work with any program that exports the Mono Embedded API.
