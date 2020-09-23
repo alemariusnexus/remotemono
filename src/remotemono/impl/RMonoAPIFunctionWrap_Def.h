@@ -28,6 +28,7 @@
 #include "RMonoAPIBase_Def.h"
 #include "RMonoAPIFunctionTypeAdapters.h"
 #include "RMonoAPIFunctionSimple_Def.h"
+#include "RMonoAPIFunctionCommon_Def.h"
 #include "abi/RMonoABITypeTraits.h"
 
 
@@ -72,7 +73,7 @@ namespace remotemono
  * @see RMonoAPIFunctionAPIBase
  */
 template <class CommonT, typename ABI, typename RetT, typename... ArgsT>
-class RMonoAPIFunctionWrapBase
+class RMonoAPIFunctionWrapBase : public RMonoAPIFunctionCommon<ABI>
 {
 public:
 	typedef RetT WrapRetType;
@@ -189,6 +190,8 @@ private:
 	typedef RMonoVariant Variant;
 	typedef RMonoVariantArray VariantArray;
 
+	typedef typename RMonoAPIFunctionCommon<ABI>::variantflags_t variantflags_t;
+
 	typedef typename RMonoAPIFunctionCommonTraits<CommonT>::DefRetType DefRetType;
 	typedef typename RMonoAPIFunctionCommonTraits<CommonT>::DefArgsTuple DefArgsTuple;
 
@@ -200,6 +203,9 @@ private:
 
 		blackbone::ptr_t gchandleGetTargetAddr;
 		blackbone::ptr_t gchandleNewAddr;
+		blackbone::ptr_t objectGetClassAddr;
+		blackbone::ptr_t classIsValuetypeAddr;
+		blackbone::ptr_t objectUnboxAddr;
 
 		int32_t regSize;
 		int32_t rawArgStackSize;
@@ -207,14 +213,6 @@ private:
 		// ZBP-relative offsets
 		int32_t stackOffsArgBase;
 		int32_t stackOffsRetval;
-	};
-
-	// TODO: Find a fucking way to not have to redefine this here. I swear, I'm going to kill someone.
-	enum ParamFlags
-	{
-		ParamFlagMonoObjectPtr = 0x01,
-		ParamFlagOut = 0x02,
-		ParamFlagDirectPtr = 0x04
 	};
 
 public:
@@ -313,6 +311,8 @@ private:
 
 	void genGchandleGetTargetChecked(AsmBuildContext& ctx);
 	void genGchandleNewChecked(AsmBuildContext& ctx);
+	void genIsValueTypeInstance(AsmBuildContext& ctx);
+	void genObjectUnbox(AsmBuildContext& ctx);
 
 	template <size_t argIdx, typename ArgsTupleT>
 	constexpr size_t calcStackArgOffset()

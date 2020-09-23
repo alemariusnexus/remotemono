@@ -27,6 +27,7 @@
 #include "RMonoAPIBase_Def.h"
 #include "../util.h"
 #include "../asmutil.h"
+#include "../log.h"
 
 using namespace blackbone;
 
@@ -81,6 +82,9 @@ asmjit::Label RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::compileWrap(bl
 	apid->apply([&](auto& e) {
 		ctx.gchandleGetTargetAddr = e.api.gchandle_get_target.getRawFuncAddress();
 		ctx.gchandleNewAddr = e.api.gchandle_new.getRawFuncAddress();
+		ctx.objectGetClassAddr = e.api.object_get_class.getRawFuncAddress();
+		ctx.classIsValuetypeAddr = e.api.class_is_valuetype.getRawFuncAddress();
+		ctx.objectUnboxAddr = e.api.object_unbox.getRawFuncAddress();
 	});
 
 	if constexpr(needsWrapFunc()) {
@@ -356,21 +360,16 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperReserveArgSta
 			a->mov(a->zcx, ptrWrapFuncArg<wrapArgIdx>(ctx));
 			a->jecxz(a->zcx, lReserveEnd);
 
-		//		uint8_t flags = *((uint8_t*) wrapArgs[wrapArgIdx]);
-				a->movzx(a->zcx, byte_ptr(a->zcx));
+		//		// !!! Wrap argument points to payload, and flags are stored BEFORE the payload !!!
+		//		variantflags_t flags = *((variantflags_t*) (wrapArgs[wrapArgIdx] - sizeof(variantflags_t)));
+				a->movzx(a->zcx, ptr(a->zcx, - (int32_t) sizeof(variantflags_t), sizeof(variantflags_t)));
 
 		//		if ((flags & ParamFlagMonoObjectPtr) != 0) {
 				a->test(a->zcx, ParamFlagMonoObjectPtr);
 				a->jz(lReserveEnd);
 
-		//			if ((flags & ParamFlagOut) != 0) {
-					a->test(a->zcx, ParamFlagOut);
-					a->jz(lReserveEnd);
-
-		//				__dynstack IRMonoObjectPtrRaw variantDummyPtr;
-						a->sub(a->zsp, sizeof(IRMonoObjectPtrRaw));
-
-		//			}
+		//			__dynstack IRMonoObjectPtrRaw variantDummyPtr;
+					a->sub(a->zsp, sizeof(IRMonoObjectPtrRaw));
 		//		}
 		//	}
 			a->bind(lReserveEnd);
@@ -397,7 +396,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperReserveArgSta
 
 		//		struct VariantArrayStackEntry {
 		//			IRMonoObjectPtrRaw objPtr;
-		//			IRMonoObjectPtrRaw origArrPtr;	// Only saved if (MonoObjectPtr && Out)
+		//			IRMonoObjectPtrRaw origArrPtr;	// Only valid if (MonoObjectPtr && Out), otherwise NULL
 		//		}
 		//		__dynstack VariantArrayStackEntry variantArrStackData[numElems];
 				a->shl(a->zcx, static_ilog2(2*sizeof(IRMonoObjectPtrRaw)));
@@ -481,44 +480,69 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 		Label lBuildEnd = a->newLabel();
 		Label lNullPtr = a->newLabel();
 		Label lNotMonoObjectPtr = a->newLabel();
+		Label lNoAutoUnbox = a->newLabel();
 		Label lNotDirectPtr = a->newLabel();
 		Label lMonoObjectPtrNotOut = a->newLabel();
 
 		//	if (wrapArgs[wrapArgIdx] != nullptr) {
 			a->mov(a->zcx, ptrWrapFuncArg<wrapArgIdx>(ctx));
-			a->jecxz(a->zcx, lNullPtr);
+			a->test(a->zcx, a->zcx);
+			a->jz(lNullPtr);
 
-		//		uint8_t flags = *((uint8_t*) wrapArgs[wrapArgIdx]);
-				a->movzx(a->zsi, byte_ptr(a->zcx));
+		//		// !!! Wrap argument points to payload, and flags are stored BEFORE the payload !!!
+		//		variantflags_t flags = *((variantflags_t*) (wrapArgs[wrapArgIdx] - sizeof(variantflags_t)));
+				a->movzx(a->zsi, ptr(a->zcx, - (int32_t) sizeof(variantflags_t), sizeof(variantflags_t)));
 
 		//		if ((flags & ParamFlagMonoObjectPtr) != 0) {
 				a->test(a->zsi, ParamFlagMonoObjectPtr);
 				a->jz(lNotMonoObjectPtr);
 
-		//			irmono_gchandle gchandle = *((irmono_gchandle*) (wrapArgs[wrapArgIdx] + 1));
+		//			irmono_gchandle gchandle = *((irmono_gchandle*) wrapArgs[wrapArgIdx]);
 		//			IRMonoObjectPtrRaw objPtr = mono_gchandle_get_target_checked(gchandle);
-					a->mov(ecx, ptr(a->zcx, 1));
+					a->mov(ecx, ptr(a->zcx));
 					genGchandleGetTargetChecked(ctx);
+					a->mov(a->zdi, a->zax);
 
-		//			if ((flags & ParamFlagOut) != 0) {
-					a->test(a->zsi, ParamFlagOut);
-					a->jz(lMonoObjectPtrNotOut);
+		//			curDynStackPtr -= sizeof(IRMonoObjectPtrRaw);
+					a->sub(a->zbx, sizeof(IRMonoObjectPtrRaw));
 
-		//				curDynStackPtr -= sizeof(IRMonoObjectPtrRaw);
-						a->sub(a->zbx, sizeof(IRMonoObjectPtrRaw));
+		//			variantDummyPtr = objPtr;
+					a->mov(ptr(a->zbx), a->zdi);
 
-		//				variantDummyPtr = objPtr;
-						a->mov(ptr(a->zbx), a->zax);
+		//			if ((flags & ParamFlagDisableAutoUnbox)  ==  0  &&  is_value_type_instance(objPtr)) {
+					a->test(a->zsi, ParamFlagDisableAutoUnbox);
+					a->jnz(lNoAutoUnbox);
+					a->mov(a->zcx, a->zdi);
+					genIsValueTypeInstance(ctx);
+					a->test(a->zax, a->zax);
+					a->jz(lNoAutoUnbox);
 
-		//				rawArgs[rawArgIdx] = &variantDummyPtr;
-						a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zbx);
+		//				irmono_voidp unboxed = mono_object_unbox(objPtr);
+						a->mov(a->zcx, a->zdi);
+						genObjectUnbox(ctx);
+
+		//				rawArgs[rawArgIdx] = unboxed;
+						a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zax);
 
 					a->jmp(lBuildEnd);
 		//			} else {
-					a->bind(lMonoObjectPtrNotOut);
+					a->bind(lNoAutoUnbox);
 
-		//				rawArgs[rawArgIdx] = objPtr;
-						a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zax);
+		//				if ((flags & ParamFlagOut) != 0) {
+						a->test(a->zsi, ParamFlagOut);
+						a->jz(lMonoObjectPtrNotOut);
+
+		//					rawArgs[rawArgIdx] = &variantDummyPtr;
+							a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zbx);
+
+						a->jmp(lBuildEnd);
+		//				} else {
+						a->bind(lMonoObjectPtrNotOut);
+
+		//					rawArgs[rawArgIdx] = objPtr;
+							a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zdi);
+
+		//				}
 
 		//			}
 
@@ -528,16 +552,16 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 				a->test(a->zsi, ParamFlagDirectPtr);
 				a->jz(lNotDirectPtr);
 
-		//			rawArgs[rawArgIdx] = *((irmono_voidp*) (wrapArgs[wrapArgIdx] + 1));
-					a->mov(a->zax, ptr(a->zcx, 1));
+		//			rawArgs[rawArgIdx] = *((irmono_voidp*) wrapArgs[wrapArgIdx]);
+					a->mov(a->zax, ptr(a->zcx));
 					a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zax);
 
 				a->jmp(lBuildEnd);
 		//		} else {
 				a->bind(lNotDirectPtr);
 
-		//			rawArgs[rawArgIdx] = (irmono_voidp) (wrapArgs[wrapArgIdx] + 1);
-					a->lea(a->zax, ptr(a->zcx, 1));
+		//			rawArgs[rawArgIdx] = (irmono_voidp) wrapArgs[wrapArgIdx];
+					a->lea(a->zax, ptr(a->zcx));
 					a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zax);
 
 		//		}
@@ -560,104 +584,143 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 		Label lLoopEnd = a->newLabel();
 		Label lNotMonoObjectPtr = a->newLabel();
 		Label lNotOut = a->newLabel();
-		Label lOutCheckEnd = a->newLabel();
+		Label lNoAutoUnbox = a->newLabel();
+		Label lNoAutoUnboxNotOut = a->newLabel();
 
 		//	blockPtr = wrapArgs[wrapArgIdx];
-			a->mov(a->zdi, ptrWrapFuncArg<wrapArgIdx>(ctx));
+			a->mov(a->zcx, ptrWrapFuncArg<wrapArgIdx>(ctx));
 
-		//	if (blockPtr != nullptr) {
-			a->test(a->zdi, a->zdi);
+		//	if (blockPtr != nullptr  &&  numElems != 0) {
+			a->test(a->zcx, a->zcx);
+			a->jz(lBlockPtrNull);
+			a->cmp(dword_ptr(a->zcx), 0);
 			a->jz(lBlockPtrNull);
 
-		//		uint32_t i = 0;
-				a->xor_(esi, esi);
+		//		uint32_t numElems = *((uint32_t*) blockPtr);
+				a->mov(a->zdx, dword_ptr(a->zcx));
 
-		//		while (i < *((uint32_t*) blockPtr)) {
+		//		// For the alignment, if sizeof(irmono_voidp) is 4, we are automatically aligned. If it's 8, we are
+		//		// either aligned or exactly 4 bytes off.
+		//		irmono_voidpp arrEntryPtr = (irmono_voidpp) align(blockPtr + sizeof(uint32_t), sizeof(irmono_voidpp));
+				a->lea(a->zsi, ptr(a->zcx, sizeof(uint32_t)));
+				if (sizeof(irmono_voidp) == 8) {
+		//			arrEntryPtr += (arrEntryPtr & 0x7);
+					a->mov(a->zax, a->zsi);
+					a->and_(a->zax, 0x7);
+					a->add(a->zsi, a->zax);
+				}
+
+		//		// As long as sizeof(variantflags_t) <= sizeof(irmono_voidp), we are automatically aligned.
+		//		variantflags_t* flagsPtr = (uint8_t*) align(arrEntryPtr + numElems*sizeof(irmono_voidp), sizeof(variantflags_t);
+				a->lea(a->zdi, ptr(a->zsi, a->zdx, static_ilog2(sizeof(irmono_voidp))));
+
+		//		rawArgs[rawArgIdx] = arrEntryPtr;
+				a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zsi);
+
+		//		// We'll use the presence of ParamFlagLastArrayElement as a stop condition for the loop. We've already checked
+				// that there's at least one entry in the array above. This way, we don't need to store the loop counter nor
+				// the number of elements in the array. Now we can use ZSI and ZDI for other purposes. :)
+		//		do {
 				a->bind(lLoopStart);
-				a->cmp(esi, dword_ptr(a->zdi));
-				a->je(lLoopEnd);
-
-		//			irmono_voidpp arrEntryPtr = (irmono_voidpp) (blockPtr + sizeof(uint32_t) + *((uint32_t*) blockPtr) + i*sizeof(irmono_voidp));
-					a->mov(ecx, dword_ptr(a->zdi));
-					a->lea(a->zcx, ptr(a->zdi, ecx));
-					a->lea(a->zcx, ptr(a->zcx, esi, static_ilog2(sizeof(irmono_voidp)), sizeof(uint32_t)));
 
 		//			curDynStackPtr -= sizeof(VariantArrayStackEntry);
 					a->sub(a->zbx, 2*sizeof(IRMonoObjectPtrRaw));
 
+		//			// Must be NULL unless (MonoObjectPtr && Out == true) for genWrapperHandleOutParams() below.
+		//			variantArrStackData[i].origArrPtr = 0;
+					a->mov(ptr(a->zbx, sizeof(IRMonoObjectPtrRaw), sizeof(IRMonoObjectPtrRaw)), 0);
+
 		//			if (*arrEntryPtr != nullptr) {
-					a->cmp(ptr(a->zcx, 0, sizeof(irmono_voidp)), 0);
+					a->cmp(ptr(a->zsi, 0, sizeof(irmono_voidp)), 0);
 					a->je(lLoopFinal);
 
-		//				uint8_t flags = *((uint8_t*) (blockPtr + sizeof(uint32_t) + i);
-						a->movzx(a->zdx, byte_ptr(a->zdi, a->zsi, 0, sizeof(uint32_t)));
-
-		//				if ((flags & ParamFlagMonoObjectPtr) != 0) {
-						a->test(a->zdx, ParamFlagMonoObjectPtr);
+		//				if (((*flagsPtr) & ParamFlagMonoObjectPtr) != 0) {
+						a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagMonoObjectPtr);
 						a->jz(lNotMonoObjectPtr);
 
 		//					irmono_gchandle gchandle = *((irmono_gchandle*) *arrEntryPtr);
 		//					IRMonoObjectPtrRaw objPtr = mono_gchandle_get_target_checked(gchandle);
-							a->mov(a->zcx, ptr(a->zcx));
+							a->mov(a->zcx, ptr(a->zsi));
 							a->mov(ecx, ptr(a->zcx));
 							genGchandleGetTargetChecked(ctx);
-
-		//					// Renew flags, arrEntryPtr (registers overwritten by function call)
-							a->movzx(a->zdx, byte_ptr(a->zdi, a->zsi, 0, sizeof(uint32_t)));
-							a->mov(ecx, dword_ptr(a->zdi));
-							a->lea(a->zcx, ptr(a->zdi, ecx));
-							a->lea(a->zcx, ptr(a->zcx, esi, static_ilog2(sizeof(irmono_voidp)), sizeof(uint32_t)));
-
-		//					if ((flags & ParamFlagOut) != 0) {
-							a->test(a->zdx, ParamFlagOut);
-							a->jz(lNotOut);
-
-		//						variantArrStackData[i].origArrPtr = *arrEntryPtr;
-								a->mov(a->zdx, ptr(a->zcx));
-								a->mov(ptr(a->zbx, sizeof(IRMonoObjectPtrRaw)), a->zdx);
-
-		//						*arrEntryPtr = &variantArrStackData[i].objPtr;
-								a->mov(ptr(a->zcx), a->zbx);
-
-							a->jmp(lOutCheckEnd);
-		//					} else {
-							a->bind(lNotOut);
-
-		//						*arrEntryPtr = objPtr;
-								a->mov(ptr(a->zcx), a->zax);
-
-		//					}
-							a->bind(lOutCheckEnd);
 
 		//					variantArrStackData[i].objPtr = objPtr;
 							a->mov(ptr(a->zbx), a->zax);
 
+		//					if (((*flagsPtr) & ParamFlagOut) != 0) {
+							a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagOut);
+							a->jz(lNotOut);
+
+		//						variantArrStackData[i].origArrPtr = *arrEntryPtr;
+								a->mov(a->zcx, ptr(a->zsi));
+								a->mov(ptr(a->zbx, sizeof(IRMonoObjectPtrRaw)), a->zcx);
+
+		//					}
+							a->bind(lNotOut);
+
+		//					// Always store objPtr into the array first. Even if it's overwritten in the next few lines
+		//					// of code, we can use this to restore objPtr from the array after zcx has been overwritten
+		//					// by a function call.
+		//					*arrEntryPtr = objPtr;
+							a->mov(ptr(a->zsi), a->zax);
+
+		//					if (((*flagsPtr) & ParamFlagDisableAutoUnbox)  ==  0  &&  is_value_type_instance(objPtr)) {
+							a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagDisableAutoUnbox);
+							a->jnz(lNoAutoUnbox);
+							a->mov(a->zcx, a->zax);
+							genIsValueTypeInstance(ctx);
+							a->test(a->zax, a->zax);
+							a->mov(a->zax, ptr(a->zsi)); // Restore objPtr (overwritten by function call)
+							a->jz(lNoAutoUnbox);
+
+		//						irmono_voidp unboxed = mono_object_unbox(objPtr);
+								a->mov(a->zcx, a->zax);
+								genObjectUnbox(ctx);
+
+		//						*arrEntryPtr = unboxed;
+								a->mov(ptr(a->zsi), a->zax);
+
+							a->jmp(lLoopFinal);
+		//					} else {
+							a->bind(lNoAutoUnbox);
+
+		//						if (((*flagsPtr) & ParamFlagOut) != 0) {
+								a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagOut);
+								a->jz(lNoAutoUnboxNotOut);
+
+		//							*arrEntryPtr = &variantArrStackData[i].objPtr;
+									a->mov(ptr(a->zsi), a->zbx);
+
+		//						}
+								a->bind(lNoAutoUnboxNotOut);
+
+		//					}
+
 						a->jmp(lLoopFinal);
-		//				} else if ((flags & ParamFlagDirectPtr) != 0) {
+		//				} else if (((*flagsPtr) & ParamFlagDirectPtr) != 0) {
 						a->bind(lNotMonoObjectPtr);
-						a->test(a->zdx, ParamFlagDirectPtr);
+						a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagDirectPtr);
 						a->jz(lLoopFinal);
 
 		//					*arrEntryPtr = *((irmono_voidp*) *arrEntryPtr);
-							a->mov(a->zax, ptr(a->zcx));
+							a->mov(a->zax, ptr(a->zsi));
 							a->mov(a->zax, ptr(a->zax));
-							a->mov(ptr(a->zcx), a->zax);
+							a->mov(ptr(a->zsi), a->zax);
 
 		//				}
 		//			}
 
-		//			i++;
 					a->bind(lLoopFinal);
-					a->inc(esi);
-					a->jmp(lLoopStart);
 
-		//		}
+		//			arrEntryPtr += sizeof(irmono_voidp);
+					a->add(a->zsi, sizeof(irmono_voidp));
+
+		//		} while (((*flagsPtr++) & ParamFlagLastArrayElement)  ==  0);
+				a->mov(a->zcx, ptr(a->zdi, 0, sizeof(variantflags_t)));
+				a->add(a->zdi, sizeof(variantflags_t));
+				a->test(a->zcx, ParamFlagLastArrayElement);
+				a->jz(lLoopStart);
 				a->bind(lLoopEnd);
-
-		//		rawArgs[rawArgIdx] = blockPtr + sizeof(uint32_t) + *((uint32_t*) blockPtr);
-				a->mov(ecx, dword_ptr(a->zdi));
-				a->lea(a->zcx, ptr(a->zdi, ecx, 0, sizeof(uint32_t)));
-				a->mov(ptrRawFuncArg<rawArgIdx>(ctx), a->zcx);
 
 			a->jmp(lBuildEnd);
 		//	} else {
@@ -728,7 +791,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 		static_assert(argSize == sizeof(std::tuple_element_t<wrapArgIdx, typename RMonoAPIFunctionWrapTraits<CommonT>::WrapArgsTuple>),
 				"Different non-special argument type size for wrap and raw functions is not supported.");
 
-		// Arguments larger than sizeof(RemotePtrT) are passed as multiple stack entries (e.g. double or uint64_t on 32-bit).
+		// Arguments larger than sizeof(irmono_voidp) are passed as multiple stack entries (e.g. double or uint64_t on 32-bit).
 		for (size_t partIdx = 0 ; partIdx*sizeof(irmono_voidp) < argSize ; partIdx++) {
 			a->mov(a->zcx, ptrWrapFuncArg<wrapArgIdx>(ctx, partIdx));
 			a->mov(ptrRawFuncArg<rawArgIdx>(ctx, partIdx), a->zcx);
@@ -789,7 +852,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleRetAndO
 		// what mono_array_addr_with_size() does, but are there functions that return it directly? Should we make
 		// it configurable via a ReturnTag<>?
 
-		//	uint8_t flags = (uint8_t) wrapArgs[0];
+		//	variantflags_t flags = (variantflags_t) wrapArgs[0];
 			a->mov(a->zcx, ptrWrapFuncArg<0>(ctx));
 
 		//	if ((flags & ParamFlagMonoObjectPtr) != 0) {
@@ -920,25 +983,34 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 			a->test(a->zdi, a->zdi);
 			a->jz(lHandleEnd);
 
-		//		uint8_t flags = *((uint8_t*) blockPtr);
-				a->movzx(a->zcx, byte_ptr(a->zdi));
+		//		// !!! Wrap argument points to payload, and flags are stored BEFORE the payload !!!
+		//		variantflags_t flags = *((variantflags_t*) (blockPtr - sizeof(variantflags_t)));
+				a->movzx(a->zcx, ptr(a->zdi, - (int32_t) sizeof(variantflags_t), sizeof(variantflags_t)));
 
-		//		if ((flags & ParamFlagMonoObjectPtr) != 0  &&  (flags & ParamFlagOut) != 0) {
-				a->and_(a->zcx, ParamFlagMonoObjectPtr | ParamFlagOut);
-				a->cmp(a->zcx, ParamFlagMonoObjectPtr | ParamFlagOut);
-				a->jne(lHandleEnd);
+		//		if ((flags & ParamFlagMonoObjectPtr) != 0) {
+				a->test(a->zcx, ParamFlagMonoObjectPtr);
+				a->jz(lHandleEnd);
 
 		//			curDynStackPtr -= sizeof(IRMonoObjectPtrRaw);
 					a->sub(a->zbx, sizeof(IRMonoObjectPtrRaw));
 
-					if constexpr(tags::has_param_tag_v<ArgT, tags::ParamOutTag>) {
-		//				irmono_gchandle gchandle = mono_gchandle_new_checked(variantDummyPtr);
-						a->mov(a->zcx, ptr(a->zbx));
-						genGchandleNewChecked(ctx);
+		//			if ((flags & ParamFlagOut) != 0) {
+					a->test(a->zcx, ParamFlagOut);
+					a->jz(lHandleEnd);
 
-		//				*((irmono_gchandle*) (blockPtr + 1)) = gchandle;
-						a->mov(dword_ptr(a->zdi, 1), eax);
-					}
+						if constexpr (
+								tags::has_param_tag_v<ArgT, tags::ParamOutTag>
+							||	tags::has_param_tag_v<ArgT, tags::ParamOvwrInOutTag>
+						) {
+		//					irmono_gchandle gchandle = mono_gchandle_new_checked(variantDummyPtr);
+							a->mov(a->zcx, ptr(a->zbx));
+							genGchandleNewChecked(ctx);
+
+		//					*((irmono_gchandle*) blockPtr) = gchandle;
+							a->mov(dword_ptr(a->zdi), eax);
+						}
+
+		//			}
 
 		//		}
 
@@ -959,7 +1031,10 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 			a->test(a->zdi, a->zdi);
 			a->jz(lHandleEnd);
 
-				if constexpr(tags::has_param_tag_v<ArgT, tags::ParamOutTag>) {
+				if constexpr (
+						tags::has_param_tag_v<ArgT, tags::ParamOutTag>
+					||	tags::has_param_tag_v<ArgT, tags::ParamOvwrInOutTag>
+				) {
 		//			uint32_t i = 0;
 					a->xor_(esi, esi);
 
@@ -975,23 +1050,14 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 						a->cmp(ptr(a->zbx, sizeof(IRMonoObjectPtrRaw), sizeof(irmono_voidp)), 0);
 						a->je(lLoopFinal);
 
-		//					uint8_t flags = *((uint8_t*) (blockPtr + sizeof(uint32_t) + i);
-							a->movzx(a->zdx, byte_ptr(a->zdi, a->zsi, 0, sizeof(uint32_t)));
+		//					irmono_gchandle gchandle = mono_gchandle_new_checked(variantArrStackData[i].objPtr);
+							a->mov(a->zcx, ptr(a->zbx));
+							genGchandleNewChecked(ctx);
 
-		//					if ((flags & ParamFlagMonoObjectPtr) != 0  &&  (flags & ParamFlagOut) != 0) {
-							a->and_(a->zdx, ParamFlagMonoObjectPtr | ParamFlagOut);
-							a->cmp(a->zdx, ParamFlagMonoObjectPtr | ParamFlagOut);
-							a->jne(lLoopFinal);
+		//					*((irmono_gchandle*) variantArrStackData[i].origArrPtr) = gchandle;
+							a->mov(a->zcx, ptr(a->zbx, sizeof(IRMonoObjectPtrRaw)));
+							a->mov(dword_ptr(a->zcx), eax);
 
-		//						irmono_gchandle gchandle = mono_gchandle_new_checked(variantArrStackData[i].objPtr);
-								a->mov(a->zcx, ptr(a->zbx));
-								genGchandleNewChecked(ctx);
-
-		//						*((irmono_gchandle*) variantArrStackData[i].origArrPtr) = gchandle;
-								a->mov(a->zcx, ptr(a->zbx, sizeof(IRMonoObjectPtrRaw)));
-								a->mov(dword_ptr(a->zcx), eax);
-
-		//					}
 		//				}
 
 		//				i++;
@@ -1061,6 +1127,20 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genGchandleNewChecked(A
 	// NOTE: Always expects a MonoObjectPtrRaw in zcx.
 
 	AsmGenGchandleNewChecked(*ctx.a, ctx.gchandleNewAddr, ctx.x64);
+}
+
+
+template <typename CommonT, typename ABI, typename RetT, typename... ArgsT>
+void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genIsValueTypeInstance(AsmBuildContext& ctx)
+{
+	AsmGenIsValueTypeInstance(*ctx.a, ctx.objectGetClassAddr, ctx.classIsValuetypeAddr, ctx.x64);
+}
+
+
+template <typename CommonT, typename ABI, typename RetT, typename... ArgsT>
+void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genObjectUnbox(AsmBuildContext& ctx)
+{
+	AsmGenObjectUnbox(*ctx.a, ctx.objectUnboxAddr, ctx.x64);
 }
 
 

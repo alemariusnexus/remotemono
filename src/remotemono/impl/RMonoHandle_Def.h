@@ -360,3 +360,31 @@ public:
 
 
 }
+
+
+
+
+namespace std
+{
+
+
+template <
+	typename HandleT,
+	void (*deleter)(HandleT, remotemono::RMonoAPIBase*),
+	HandleT invalidHandle
+>
+struct hash<typename remotemono::RMonoHandle<HandleT, deleter, invalidHandle>>
+{
+	typedef typename remotemono::RMonoHandle<HandleT, deleter, invalidHandle> HandleT;
+
+	std::size_t operator()(HandleT const& h) const noexcept
+	{
+		return hh(*h);
+	}
+
+private:
+	std::hash<typename HandleT::HandleType> hh;
+};
+
+
+}

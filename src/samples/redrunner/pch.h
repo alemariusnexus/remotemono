@@ -34,3 +34,4 @@
 #include <remotemono/log.h>
 #include <remotemono/util.h>
 #include <remotemono/RMonoAPI.h>
+#include <remotemono/helper/RMonoHelpers.h>

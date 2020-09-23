@@ -39,6 +39,7 @@ public:
 
 	blackbone::Process& getProcess() { return process; }
 	RMonoAPI& getMono() { return mono; }
+	RMonoHelperContext& getMonoHelperContext() { return helperCtx; }
 
 	RMonoDomainPtr getTestDomain() { return testDomain; }
 	RMonoAssemblyPtr getTestAssembly() { return testAssembly; }
@@ -50,6 +51,7 @@ private:
 private:
 	blackbone::Process process;
 	RMonoAPI mono;
+	RMonoHelperContext helperCtx;
 
 	RMonoDomainPtr testDomain;
 	RMonoAssemblyPtr testAssembly;

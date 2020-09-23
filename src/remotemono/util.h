@@ -47,16 +47,30 @@ constexpr uint8_t static_ilog2(UIntT x)
 }
 
 /**
- * Aligns an aligned address at compile time.
+ * Aligns an address at compile time.
  *
  * @param x The (unaligned) input address.
  * @param align The alignment in bytes.
  * @return The aligned address. Will always be >= x such that x%align == 0.
  */
 template <typename UIntT>
-constexpr UIntT static_align(UIntT x, UIntT align)
+constexpr UIntT static_align(UIntT x, size_t al)
 {
-	return (x % align == 0) ? x : (x/align + 1) * align;
+	return UIntT((x % al == 0) ? x : (x/al + 1) * al);
+}
+
+
+/**
+ * Aligns an address.
+ *
+ * @param x The (unaligned) input address.
+ * @param align The alignment in bytes.
+ * @return The aligned address. Will always be >= x such that x%align == 0.
+ */
+template <typename UIntT>
+UIntT align(UIntT x, size_t al)
+{
+	return UIntT((x % al == 0) ? x : (x/al + 1) * al);
 }
 
 
@@ -84,6 +98,14 @@ std::string qualified_type_name()
 		name += "&&";
 	}
 	return name;
+}
+
+
+template <typename T>
+inline void hash_combine(size_t& s, const T& v)
+{
+	// Taken from Boost
+	s ^= std::hash<T>()(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
 }
 
 

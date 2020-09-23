@@ -21,9 +21,9 @@
 
 #include "../../config.h"
 
-#include "RMonoRemoteException_Def.h"
+#include "RMonoObject_Def.h"
 
-#include "../RMonoAPI_Def.h"
+#include "RMonoField_Def.h"
 
 
 
@@ -31,31 +31,27 @@ namespace remotemono
 {
 
 
-void RMonoRemoteException::fetchRemoteData() noexcept
+RMonoField RMonoObject::field(const std::string& name) const
 {
-	if (dataFetched) {
-		return;
-	}
+	return RMonoField(d->cls.field(name), *this);
+}
 
-	try {
-		auto mono = static_cast<RMonoAPI*>(ex.getMonoAPI());
 
-		if (mono) {
-			auto cls = mono->objectGetClass(ex);
-			auto msgProp = mono->classGetPropertyFromName(cls, "Message");
-			auto msgGet = mono->propertyGetGetMethod(msgProp);
-			auto msgStr = mono->runtimeInvoke(msgGet, ex);
-			message = mono->stringToUTF8(msgStr);
+RMonoProperty RMonoObject::property(const std::string& name) const
+{
+	return RMonoProperty(d->cls.property(name), *this);
+}
 
-			toStrRes = mono->objectToStringUTF8(ex);
-		}
-	} catch (std::exception& ex) {
-		RMonoLogError("RMonoRemoteException::fetchRemoteData() caught an exception: %s", ex.what());
-	} catch (...) {
-		RMonoLogError("RMonoRemoteException::fetchRemoteData() caught an exception.");
-	}
 
-	dataFetched = true;
+RMonoMethod RMonoObject::method(const std::string& name, int32_t paramCount) const
+{
+	return RMonoMethod(d->cls.method(name, paramCount), *this);
+}
+
+
+RMonoMethod RMonoObject::methodDesc(const std::string& desc, bool includeNamespace) const
+{
+	return RMonoMethod(d->cls.methodDesc(desc, includeNamespace), *this);
 }
 
 

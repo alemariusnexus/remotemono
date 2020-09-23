@@ -126,5 +126,78 @@ inline void AsmGenGchandleNewChecked(blackbone::IAsmHelper& a, blackbone::ptr_t 
 }
 
 
+inline void AsmGenIsValueTypeInstance (
+		blackbone::IAsmHelper& a,
+		blackbone::ptr_t objectGetClassAddr,
+		blackbone::ptr_t classIsValuetypeAddr,
+		bool x64
+) {
+	// bool is_value_type_instance(IRMonoObjectPtrRaw obj)
+	//
+	//		obj: zcx
+
+	using namespace asmjit;
+	using namespace asmjit::host;
+
+	auto lSkip = a->newLabel();
+
+	//	zax = false;
+	a->xor_(a->zax, a->zax);
+
+	//	if (obj != nullptr) {
+		a->jecxz(a->zcx, lSkip);
+
+	//		zax = mono_class_is_valuetype(mono_object_get_class(obj));
+			if (x64) {
+				a->sub(a->zsp, 32);
+				a->mov(a->zax, objectGetClassAddr);
+				a->call(a->zax);
+				a->mov(a->zcx, a->zax);
+				a->mov(a->zax, classIsValuetypeAddr);
+				a->call(a->zax);
+				a->add(a->zsp, 32);
+			} else {
+				a->push(a->zcx);
+				a->mov(a->zax, objectGetClassAddr);
+				a->call(a->zax);
+				a->mov(ptr(a->zsp), a->zax);
+				a->mov(a->zax, classIsValuetypeAddr);
+				a->call(a->zax);
+				a->add(a->zsp, sizeof(uint32_t));
+			}
+
+	//	}
+		a->bind(lSkip);
+}
+
+
+inline void AsmGenObjectUnbox (
+		blackbone::IAsmHelper& a,
+		blackbone::ptr_t objectUnboxAddr,
+		bool x64
+) {
+	// void* object_unbox(IRMonoObjectPtrRaw obj)
+	//
+	//		obj: zcx
+
+	using namespace asmjit;
+	using namespace asmjit::host;
+
+
+	//	zax = mono_object_unbox(obj);
+		if (x64) {
+			a->mov(a->zax, objectUnboxAddr);
+			a->sub(a->zsp, 32);
+			a->call(a->zax);
+			a->add(a->zsp, 32);
+		} else {
+			a->push(a->zcx);
+			a->mov(a->zax, objectUnboxAddr);
+			a->call(a->zax);
+			a->add(a->zsp, sizeof(uint32_t));
+		}
+}
+
+
 
 }

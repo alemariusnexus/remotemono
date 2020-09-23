@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include "impl/RMonoAPIFunctionSimple_Def.h"
+#include "impl/RMonoAPIFunctionCommon_Def.h"
 #include "impl/RMonoAPIFunctionRaw_Def.h"
 #include "impl/RMonoAPIFunctionWrap_Def.h"
 #include "impl/RMonoAPIFunctionAPI_Def.h"

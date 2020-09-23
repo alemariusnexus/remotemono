@@ -36,114 +36,78 @@ namespace remotemono
 
 bool RMonoVariant::isNullPointer() const
 {
-	if (type == TypeInvalid) {
+	if ((flags & FlagIsAlias)  !=  0) {
+		return alias->isNullPointer();
+	}
+
+	switch (getType()) {
+	case TypeInvalid:
 		return true;
-	}
-
-	if ((flags & FlagOut)  ==  0) {
-		if (type == TypeCustomValueCopy) {
-			return cvc.p == nullptr;
-		} else if (type == TypeCustomValueRef) {
-			return cvr == 0;
-		}
-		return false;
-	}
-
-	switch (type) {
-	case TypeInt8:
-		return i8p == nullptr;
-	case TypeUInt8:
-		return u8p == nullptr;
-	case TypeInt16:
-		return i16p == nullptr;
-	case TypeUInt16:
-		return u16p == nullptr;
-	case TypeInt32:
-		return i32p == nullptr;
-	case TypeUInt32:
-		return u32p == nullptr;
-	case TypeInt64:
-		return i64p == nullptr;
-	case TypeUInt64:
-		return u64p == nullptr;
-	case TypeFloat:
-		return fp == nullptr;
-	case TypeDouble:
-		return dp == nullptr;
-	case TypeBool:
-		return bp == nullptr;
-	case TypeCustomValueCopy:
-		return cvc.p == nullptr;
-	case TypeCustomValueRef:
-		return cvrp == nullptr;
+	case TypeValue:
+		return ((flags & FlagOwnMemory) == 0)  &&  v.ddata == nullptr;
 	case TypeMonoObjectPtr:
-		return op == nullptr;
+		return ((flags & FlagOwnMemory) == 0)  &&  op == nullptr;
+	case TypeRawPtr:
+		return ((flags & FlagOwnMemory) == 0)  &&  pp == nullptr;
+	default:
+		assert(false);
 	}
 
 	return true;
 }
 
 
-bool RMonoVariant::isNullValue() const
-{
-	if (isNullPointer()) {
-		return true;
-	}
-
-	if ((flags & FlagOut)  !=  0) {
-		switch (type) {
-		case TypeCustomValueRef:
-			return (*cvrp == 0);
-		case TypeMonoObjectPtr:
-			return ! (bool) (*op);
-		}
-	} else {
-		switch (type) {
-		case TypeMonoObjectPtr:
-			return ! (bool) o;
-		}
-	}
-
-	return false;
-}
-
-
 template <typename ABI>
-size_t RMonoVariant::getRemoteMemorySize(ABI& abi) const
+size_t RMonoVariant::getRemoteMemorySize(ABI& abi, size_t& alignment) const
 {
 	typedef RMonoABITypeTraits<ABI> ABITypeTraits;
 
-	if (isNullPointer()) {
-		return 0;
+	if ((flags & FlagIsAlias)  !=  0) {
+		return alias->getRemoteMemorySize(abi, alignment);
 	}
 
-	switch (type) {
-	case TypeInt8:
-	case TypeUInt8:
-		return 1;
-	case TypeInt16:
-	case TypeUInt16:
-		return 2;
-	case TypeInt32:
-	case TypeUInt32:
-	case TypeFloat:
-		return 4;
-	case TypeInt64:
-	case TypeUInt64:
-	case TypeDouble:
-		return 8;
-	case TypeBool:
-		return sizeof(typename ABITypeTraits::irmono_bool);
-	case TypeCustomValueCopy:
-		return cvc.size;
-	case TypeCustomValueRef:
-		return sizeof(typename ABITypeTraits::irmono_voidp);
-	case TypeMonoObjectPtr:
-		return sizeof(typename ABITypeTraits::irmono_gchandle);
-	default:
-		assert(false);
-		return 0;
+	size_t size;
+
+	if (isNullPointer()) {
+		alignment = 1;
+		size = 0;
+	} else {
+		// TODO: Actually, I have no clue what the minimum alignments for those types are. It's just a wild guess that errs
+		// somewhat on the safe side...
+
+		switch (getType()) {
+		case TypeValue:
+			if (v.size <= 1) {
+				alignment = 1;
+			} else if (v.size <= 2) {
+				alignment = 2;
+			} else if (v.size <= 4) {
+				alignment = 4;
+			} else if (v.size <= 8) {
+				alignment = 8;
+			} else {
+				alignment = 16; // Might be necessary for SIMD instructions
+			}
+			size = v.size;
+			break;
+		case TypeMonoObjectPtr:
+			alignment = sizeof(typename ABITypeTraits::irmono_gchandle);
+			size = sizeof(typename ABITypeTraits::irmono_gchandle);
+			break;
+		case TypeRawPtr:
+			alignment = sizeof(typename ABITypeTraits::irmono_voidp);
+			size = sizeof(typename ABITypeTraits::irmono_voidp);
+			break;
+		default:
+			assert(false);
+			alignment = 1;
+			size = 0;
+		}
 	}
+
+	assert(alignment <= getMaxRequiredAlignment());
+
+	return size;
 }
 
 
@@ -152,106 +116,25 @@ void RMonoVariant::copyForRemoteMemory(ABI& abi, void* buf) const
 {
 	typedef RMonoABITypeTraits<ABI> ABITypeTraits;
 
+	if ((flags & FlagIsAlias)  !=  0) {
+		alias->copyForRemoteMemory(abi, buf);
+		return;
+	}
+
 	if (isNullPointer()) {
 		return;
 	}
 
-	if ((flags & FlagOut) != 0) {
-		switch (type) {
-		case TypeInt8:
-			*((int8_t*) buf) = i8p ? *i8p : 0;
-			break;
-		case TypeUInt8:
-			*((uint8_t*) buf) = u8p ? *u8p : 0;
-			break;
-		case TypeInt16:
-			*((int16_t*) buf) = i16p ? *i16p : 0;
-			break;
-		case TypeUInt16:
-			*((uint16_t*) buf) = u16p ? *u16p : 0;
-			break;
-		case TypeInt32:
-			*((int32_t*) buf) = i32p ? *i32p : 0;
-			break;
-		case TypeUInt32:
-			*((uint32_t*) buf) = u32p ? *u32p : 0;
-			break;
-		case TypeInt64:
-			*((int64_t*) buf) = i64p ? *i64p : 0;
-			break;
-		case TypeUInt64:
-			*((uint64_t*) buf) = u64p ? *u64p : 0;
-			break;
-		case TypeFloat:
-			*((float*) buf) = fp ? *fp : 0.0f;
-			break;
-		case TypeDouble:
-			*((double*) buf) = dp ? *dp : 0.0;
-			break;
-		case TypeBool:
-			*((typename ABITypeTraits::irmono_bool*) buf) = bp ? (*bp ? 1 : 0) : 0;
-			break;
-		case TypeCustomValueCopy:
-			if (cvc.p) {
-				memcpy(buf, cvc.p, cvc.size);
-			}
-			break;
-		case TypeCustomValueRef:
-			*((typename ABITypeTraits::irmono_voidp*) buf) = abi.p2i_rmono_voidp(*cvrp);
-			break;
-		case TypeMonoObjectPtr:
-			*((typename ABITypeTraits::irmono_gchandle*) buf) = abi.hp2i_RMonoObjectPtr(*op);
-			break;
-		default:
-			assert(false);
-		}
-	} else {
-		switch (type) {
-		case TypeInt8:
-			*((int8_t*) buf) = i8;
-			break;
-		case TypeUInt8:
-			*((uint8_t*) buf) = u8;
-			break;
-		case TypeInt16:
-			*((int16_t*) buf) = i16;
-			break;
-		case TypeUInt16:
-			*((uint16_t*) buf) = u16;
-			break;
-		case TypeInt32:
-			*((int32_t*) buf) = i32;
-			break;
-		case TypeUInt32:
-			*((uint32_t*) buf) = u32;
-			break;
-		case TypeInt64:
-			*((int64_t*) buf) = i64;
-			break;
-		case TypeUInt64:
-			*((uint64_t*) buf) = u64;
-			break;
-		case TypeFloat:
-			*((float*) buf) = f;
-			break;
-		case TypeDouble:
-			*((double*) buf) = d;
-			break;
-		case TypeBool:
-			*((typename ABITypeTraits::irmono_bool*) buf) = b ? 1 : 0;
-			break;
-		case TypeCustomValueCopy:
-			if (cvc.p) {
-				memcpy(buf, cvc.p, cvc.size);
-			}
-			break;
-		case TypeCustomValueRef:
-			*((typename ABITypeTraits::irmono_voidp*) buf) = abi.p2i_rmono_voidp(cvr);
-			break;
-		case TypeMonoObjectPtr:
-			*((typename ABITypeTraits::irmono_gchandle*) buf) = abi.hp2i_RMonoObjectPtr(o);
-			break;
-		}
+	switch (getType()) {
+	case TypeValue:
+		memcpy(buf, getValueData(), v.size);
+		break;
+	case TypeMonoObjectPtr:
+		*((typename ABITypeTraits::irmono_gchandle*) buf) = abi.hp2i_RMonoObjectPtr(getMonoObjectPtr());
+		break;
+	case TypeRawPtr:
+		*((typename ABITypeTraits::irmono_voidp*) buf) = abi.p2i_rmono_voidp(getRawPtr());
+		break;
 	}
 }
 
@@ -261,57 +144,35 @@ void RMonoVariant::updateFromRemoteMemory(ABI& abi, RMonoAPIBase& mono, void* bu
 {
 	typedef RMonoABITypeTraits<ABI> ABITypeTraits;
 
+	if ((flags & FlagIsAlias)  !=  0) {
+		alias->updateFromRemoteMemory(abi, mono, buf);
+		return;
+	}
+
 	if (isNullPointer()) {
 		return;
 	}
 
-	if ((flags & FlagOut) != 0) {
-		switch (type) {
-		case TypeInt8:
-			*i8p = *((int8_t*) buf);
-			break;
-		case TypeUInt8:
-			*u8p = *((uint8_t*) buf);
-			break;
-		case TypeInt16:
-			*i16p = *((int16_t*) buf);
-			break;
-		case TypeUInt16:
-			*u16p = *((uint16_t*) buf);
-			break;
-		case TypeInt32:
-			*i32p = *((int32_t*) buf);
-			break;
-		case TypeUInt32:
-			*u32p = *((uint32_t*) buf);
-			break;
-		case TypeInt64:
-			*i64p = *((int64_t*) buf);
-			break;
-		case TypeUInt64:
-			*u64p = *((uint64_t*) buf);
-			break;
-		case TypeFloat:
-			*fp = *((float*) buf);
-			break;
-		case TypeDouble:
-			*dp = *((double*) buf);
-			break;
-		case TypeBool:
-			*bp = *((rmono_bool*) buf) != 0;
-			break;
-		case TypeCustomValueCopy:
-			memcpy(cvc.p, buf, cvc.size);
-			break;
-		case TypeCustomValueRef:
-			*cvrp = abi.i2p_rmono_voidp(*((typename ABITypeTraits::irmono_voidp*) buf));
-			break;
-		case TypeMonoObjectPtr:
+	switch (getType()) {
+	case TypeValue:
+		memcpy(getValueData(), buf, v.size);
+		break;
+	case TypeMonoObjectPtr:
+		if ((flags & FlagOwnMemory)  !=  0) {
+			o = abi.hi2p_RMonoObjectPtr(*((typename ABITypeTraits::irmono_gchandle*) buf), &mono);
+		} else {
 			*op = abi.hi2p_RMonoObjectPtr(*((typename ABITypeTraits::irmono_gchandle*) buf), &mono);
-			break;
-		default:
-			assert(false);
 		}
+		break;
+	case TypeRawPtr:
+		if ((flags & FlagOwnMemory)  !=  0) {
+			p = abi.i2p_rmono_voidp(*((typename ABITypeTraits::irmono_voidp*) buf));
+		} else {
+			*pp = abi.i2p_rmono_voidp(*((typename ABITypeTraits::irmono_voidp*) buf));
+		}
+		break;
+	default:
+		assert(false);
 	}
 }
 

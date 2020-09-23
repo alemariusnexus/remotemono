@@ -88,6 +88,7 @@ private:
 
 	template <typename TypeT> using ParamOut = tags::ParamOut<TypeT>;
 	template <typename TypeT> using ParamInOut = tags::ParamInOut<TypeT>;
+	template <typename TypeT> using ParamOvwrInOut = tags::ParamOvwrInOut<TypeT>;
 	template <typename TypeT> using ParamException = tags::ParamException<TypeT>;
 	template <typename TypeT> using ReturnOwn = tags::ReturnOwn<TypeT>;
 
@@ -182,6 +183,7 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 1)
 	REMOTEMONO_API(	get_array_class,				false,	IRMonoClassPtr																			)
 	REMOTEMONO_API(	get_boolean_class,				false,	IRMonoClassPtr																			)
 	REMOTEMONO_API(	get_byte_class,					false,	IRMonoClassPtr																			)
+	REMOTEMONO_API(	get_sbyte_class,				false,	IRMonoClassPtr																			)
 	REMOTEMONO_API(	get_char_class,					false,	IRMonoClassPtr																			)
 	REMOTEMONO_API(	get_exception_class,			false,	IRMonoClassPtr																			)
 
@@ -190,6 +192,7 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 1)
 	REMOTEMONO_API(	class_get_parent,				false,	IRMonoClassPtr,				IRMonoClassPtr												)
 	REMOTEMONO_API(	class_get_type,					false,	IRMonoTypePtr,				IRMonoClassPtr												)
 	REMOTEMONO_API(	class_from_name,				false,	IRMonoClassPtr,				IRMonoImagePtr, string_view, string_view					)
+	REMOTEMONO_API(	class_from_mono_type,			false,	IRMonoClassPtr,				IRMonoTypePtr												)
 	REMOTEMONO_API(	class_get_name,					false,	string,						IRMonoClassPtr												)
 	REMOTEMONO_API(	class_get_namespace,			false,	string,						IRMonoClassPtr												)
 	REMOTEMONO_API(	class_get_fields,				false,	IRMonoClassFieldPtr,		IRMonoClassPtr, irmono_voidpp								)
@@ -201,9 +204,10 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 1)
 	REMOTEMONO_API(	class_get_element_class,		false,	IRMonoClassPtr,				IRMonoClassPtr												)
 	REMOTEMONO_API(	class_get_flags,				false,	uint32_t,					IRMonoClassPtr												)
 	REMOTEMONO_API(	class_get_rank,					false,	irmono_int,					IRMonoClassPtr												)
-	REMOTEMONO_API(	class_is_valuetype,				false,	irmono_bool,				IRMonoClassPtr												)
+	REMOTEMONO_API(	class_is_valuetype,				true,	irmono_bool,				IRMonoClassPtr												)
 	REMOTEMONO_API(	class_data_size,				false,	uint32_t,					IRMonoClassPtr												)
 	REMOTEMONO_API(	class_instance_size,			false,	uint32_t,					IRMonoClassPtr												)
+	REMOTEMONO_API(	class_value_size,				true,	int32_t,					IRMonoClassPtr, ParamOut<uint32_t>							)
 
 	REMOTEMONO_API(	type_get_object,				false,	IRMonoReflectionTypePtr,	IRMonoDomainPtr, IRMonoTypePtr								)
 	REMOTEMONO_API(	type_get_name,					false,	ReturnOwn<string>,			IRMonoTypePtr												)
@@ -220,8 +224,10 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 1)
 	REMOTEMONO_API(	field_get_name,					false,	string,						IRMonoClassFieldPtr											)
 	REMOTEMONO_API(	field_get_flags,				false,	uint32_t,					IRMonoClassFieldPtr											)
 	REMOTEMONO_API(	field_get_parent,				false,	IRMonoClassPtr,				IRMonoClassFieldPtr											)
+	REMOTEMONO_API(	field_get_type,					false,	IRMonoTypePtr,				IRMonoClassFieldPtr											)
 	REMOTEMONO_API(	field_set_value,				false,	void,						IRMonoObjectPtr, IRMonoClassFieldPtr, Variant				)
 	REMOTEMONO_API(	field_get_value,				false,	void,						IRMonoObjectPtr, IRMonoClassFieldPtr, ParamOut<Variant>		)
+	REMOTEMONO_API(	field_get_value_object,			false,	IRMonoObjectPtr,			IRMonoDomainPtr, IRMonoClassFieldPtr, IRMonoObjectPtr		)
 	REMOTEMONO_API(	field_static_set_value,			false,	void,						IRMonoVTablePtr, IRMonoClassFieldPtr, Variant				)
 	REMOTEMONO_API(	field_static_get_value,			false,	void,						IRMonoVTablePtr, IRMonoClassFieldPtr, ParamOut<Variant>		)
 	REMOTEMONO_API(	field_get_offset,				false,	uint32_t,					IRMonoClassFieldPtr											)
@@ -229,7 +235,9 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 1)
 REMOTEMONO_API_PART_END()
 REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 
+	REMOTEMONO_API(	method_get_class,				false,	IRMonoClassPtr,				IRMonoMethodPtr												)
 	REMOTEMONO_API(	method_get_name,				false,	string,						IRMonoMethodPtr												)
+	REMOTEMONO_API(	method_get_flags,				false,	uint32_t,					IRMonoMethodPtr, ParamOut<uint32_t>							)
 	REMOTEMONO_API(	method_full_name,				false,	ReturnOwn<string>,			IRMonoMethodPtr, irmono_bool								)
 	REMOTEMONO_API(	method_signature,				false,	IRMonoMethodSignaturePtr,	IRMonoMethodPtr												)
 	REMOTEMONO_API(	method_get_header,				false,	IRMonoMethodHeaderPtr,		IRMonoMethodPtr												)
@@ -247,9 +255,11 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 	REMOTEMONO_API(	property_get_parent,			false,	IRMonoClassPtr,				IRMonoPropertyPtr											)
 	REMOTEMONO_API(	property_get_set_method,		false,	IRMonoMethodPtr,			IRMonoPropertyPtr											)
 	REMOTEMONO_API(	property_get_get_method,		false,	IRMonoMethodPtr,			IRMonoPropertyPtr											)
-	REMOTEMONO_API(	property_get_value,				false,	IRMonoObjectPtr,			IRMonoPropertyPtr, RMonoVariant, ParamInOut<VariantArray>,
+	REMOTEMONO_API(	property_get_value,				false,	IRMonoObjectPtr,			IRMonoPropertyPtr, RMonoVariant,
+																						ParamOvwrInOut<ParamOut<VariantArray>>,
 																						ParamException<IRMonoExceptionPtr>							)
-	REMOTEMONO_API(	property_set_value,				false,	void,						IRMonoPropertyPtr, RMonoVariant, ParamInOut<VariantArray>,
+	REMOTEMONO_API(	property_set_value,				false,	void,						IRMonoPropertyPtr, RMonoVariant,
+																						ParamOvwrInOut<VariantArray>,
 																						ParamException<IRMonoExceptionPtr>							)
 
 	REMOTEMONO_API(	signature_get_return_type,		false,	IRMonoTypePtr,				IRMonoMethodSignaturePtr									)
@@ -257,10 +267,10 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 	REMOTEMONO_API(	signature_get_call_conv,		false,	uint32_t,					IRMonoMethodSignaturePtr									)
 	REMOTEMONO_API(	signature_get_desc,				false,	ReturnOwn<string>,			IRMonoMethodSignaturePtr, irmono_bool						)
 
-	REMOTEMONO_API(	object_get_class,				false,	IRMonoClassPtr,				IRMonoObjectPtr												)
+	REMOTEMONO_API(	object_get_class,				true,	IRMonoClassPtr,				IRMonoObjectPtr												)
 	REMOTEMONO_API(	object_new,						false,	IRMonoObjectPtr,			IRMonoDomainPtr, IRMonoClassPtr								)
 	REMOTEMONO_API(	runtime_object_init,			false,	void,						Variant														)
-	REMOTEMONO_API(	object_unbox,					false,	Variant,					IRMonoObjectPtr												)
+	REMOTEMONO_API(	object_unbox,					true,	Variant,					IRMonoObjectPtr												)
 	REMOTEMONO_API(	value_box,						false,	IRMonoObjectPtr,			IRMonoDomainPtr, IRMonoClassPtr, RMonoVariant				)
 	REMOTEMONO_API(	object_to_string,				false,	IRMonoStringPtr,			Variant, ParamException<IRMonoExceptionPtr>					)
 	REMOTEMONO_API(	object_clone,					false,	IRMonoObjectPtr,			IRMonoObjectPtr												)
@@ -299,7 +309,8 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 	REMOTEMONO_API(	gc_get_generation,				false,	irmono_int,					IRMonoObjectPtr												)
 	REMOTEMONO_API(	gc_wbarrier_set_arrayref,		false,	void,						IRMonoArrayPtr, irmono_voidp, IRMonoObjectPtr				)
 
-	REMOTEMONO_API(	runtime_invoke,					false,	IRMonoObjectPtr,			IRMonoMethodPtr, Variant, ParamInOut<VariantArray>,
+	REMOTEMONO_API(	runtime_invoke,					false,	IRMonoObjectPtr,			IRMonoMethodPtr, Variant,
+																						ParamOvwrInOut<VariantArray>,
 																						ParamException<IRMonoExceptionPtr>							)
 
 	REMOTEMONO_API(	compile_method,					false,	irmono_voidp,				IRMonoMethodPtr												)

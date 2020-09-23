@@ -59,6 +59,7 @@ SET(SRCS
 	tests/MonoAPIString.cpp
 	tests/MonoAPIArray.cpp
 	tests/MonoAPIMisc.cpp
+	tests/RMonoHelpers.cpp
 	)
 
 FILE(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/includes")

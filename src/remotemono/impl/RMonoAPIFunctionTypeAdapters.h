@@ -104,6 +104,7 @@ REMOTEMONO_DEFINE_PARAM_TAG(Null)
 REMOTEMONO_DEFINE_PARAM_TAG(Out)
 REMOTEMONO_DEFINE_PARAM_TAG_INHERIT1(InOut, Out)
 REMOTEMONO_DEFINE_PARAM_TAG_INHERIT1(Exception, Out)
+REMOTEMONO_DEFINE_PARAM_TAG(OvwrInOut)
 REMOTEMONO_DEFINE_PARAM_TAG(Own)
 
 REMOTEMONO_DEFINE_RETURN_TAG(Null)
@@ -369,6 +370,7 @@ struct RMonoAPIParamTypeAdapter <
 		std::enable_if_t <
 				std::is_base_of_v<RMonoVariantArray, typename VariantArrT::Type>
 			&&	! tags::has_param_tag_v<VariantArrT, tags::ParamOutTag>
+			&&	! tags::has_param_tag_v<VariantArrT, tags::ParamOvwrInOutTag>
 			>
 		>
 {
@@ -385,7 +387,9 @@ struct RMonoAPIParamTypeAdapter <
 		VariantArrT,
 		std::enable_if_t <
 				std::is_base_of_v<RMonoVariantArray, typename VariantArrT::Type>
-			&&	tags::has_param_tag_v<VariantArrT, tags::ParamOutTag>
+			&&	(	tags::has_param_tag_v<VariantArrT, tags::ParamOutTag>
+				||	tags::has_param_tag_v<VariantArrT, tags::ParamOvwrInOutTag>
+				)
 			>
 		>
 {

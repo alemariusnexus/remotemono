@@ -35,247 +35,33 @@ using namespace remotemono;
 // console afterwards.
 
 
+// Keep/remove this to switch between the two sample implementations in main_direct.cpp and main_helpers.cpp. Both of
+// them do the exact same thing, but one of them exclusively uses methods provided by RMonoAPI (the direct equivalent
+// of the Mono Embedded API), and the other uses the RemoteMono helper classes for simpler and more readable code.
+// See main_helpers.cpp and main_direct.cpp for details.
+#define REMOTEMONO_SAMPLE_USE_HELPERS
 
-struct TestContext
+
+
+#ifdef REMOTEMONO_SAMPLE_USE_HELPERS
+#include "main_helpers.cpp"
+#else
+#include "main_direct.cpp"
+#endif
+
+
+
+
+BOOL WINAPI WinConsoleCtrlHandler(DWORD signal)
 {
-	RMonoAPI* mono;
-
-	// Mono Assemblies
-	RMonoAssemblyPtr ass;
-	RMonoAssemblyPtr ueAss;
-	RMonoAssemblyPtr ueUiAss;
-
-	// Mono Assembly Images
-	RMonoImagePtr img;
-	RMonoImagePtr ueImg;
-	RMonoImagePtr ueUiImg;
-
-	// Unity classes
-	RMonoClassPtr gameObjCls;
-	RMonoClassPtr componentCls;
-	RMonoClassPtr textCls;
-	RMonoClassPtr transformCls;
-	RMonoClassPtr rectTransformCls;
-	RMonoClassPtr vector2Cls;
-	RMonoClassPtr vector3Cls;
-	RMonoClassPtr colorCls;
-
-	// RedRunner classes
-	RMonoClassPtr gameManagerCls;
-	RMonoClassPtr audioManagerCls;
-	RMonoClassPtr mainCharCls;
-
-	// RedRunner Objects
-	RMonoObjectPtr gameManagerObj;
-	RMonoObjectPtr audioManagerObj;
-	RMonoObjectPtr mainCharObj;
-};
-
-
-
-void SetupTestContext(TestContext& ctx)
-{
-	RMonoAPI& mono = *ctx.mono;
-
-	// Gather assemblies
-	ctx.ass = mono.assemblyLoaded("Assembly-CSharp");
-	ctx.ueAss = mono.assemblyLoaded("UnityEngine");
-	ctx.ueUiAss = mono.assemblyLoaded("UnityEngine.UI");
-
-	// Gather assembly images
-	ctx.img = mono.assemblyGetImage(ctx.ass);
-	ctx.ueImg = mono.assemblyGetImage(ctx.ueAss);
-	ctx.ueUiImg = mono.assemblyGetImage(ctx.ueUiAss);
-
-	// Gather UnityEngine classes
-	ctx.gameObjCls = mono.classFromName(ctx.ueImg, "UnityEngine", "GameObject");
-	ctx.componentCls = mono.classFromName(ctx.ueImg, "UnityEngine", "Component");
-	ctx.textCls = mono.classFromName(ctx.ueUiImg, "UnityEngine.UI", "Text");
-	ctx.transformCls = mono.classFromName(ctx.ueImg, "UnityEngine", "Transform");
-	ctx.rectTransformCls = mono.classFromName(ctx.ueImg, "UnityEngine", "RectTransform");
-	ctx.vector2Cls = mono.classFromName(ctx.ueImg, "UnityEngine", "Vector2");
-	ctx.vector3Cls = mono.classFromName(ctx.ueImg, "UnityEngine", "Vector3");
-	ctx.colorCls = mono.classFromName(ctx.ueImg, "UnityEngine", "Color");
-
-	// Gather RedRunner classes
-	ctx.gameManagerCls = mono.classFromName(ctx.img, "RedRunner", "GameManager");
-	ctx.audioManagerCls = mono.classFromName(ctx.img, "RedRunner", "AudioManager");
-
-	// Gather RedRunner singleton objects
-	ctx.gameManagerObj = mono.propertyGetValue(mono.classGetPropertyFromName(ctx.gameManagerCls, "Singleton"));
-	ctx.audioManagerObj = mono.propertyGetValue(mono.classGetPropertyFromName(ctx.audioManagerCls, "Singleton"));
-
-	// Get the main character (an RedRunner.RedCharacter instance)
-	ctx.mainCharObj = mono.fieldGetValue<RMonoObjectPtr>(ctx.gameManagerObj, mono.classGetFieldFromName(ctx.gameManagerCls, "m_MainCharacter"));
-
-	// Get the main characters class (we could also have gotten it explicitly like all the other classes above)
-	ctx.mainCharCls = mono.objectGetClass(ctx.mainCharObj);
-}
-
-
-void IncreaseMovementSpeed(TestContext& ctx)
-{
-	RMonoAPI& mono = *ctx.mono;
-
-	// Set a bunch of fields on the main character
-	//mono.fieldSetValue(mainChar, mono.classGetFieldFromName(mainCharCls, "m_JumpStrength"), 15.0f);
-	mono.fieldSetValue(ctx.mainCharObj, mono.classGetFieldFromName(ctx.mainCharCls, "m_MaxRunSpeed"), 15.0f);
-	mono.fieldSetValue(ctx.mainCharObj, mono.classGetFieldFromName(ctx.mainCharCls, "m_RunSpeed"), 10.0f);
-	mono.fieldSetValue(ctx.mainCharObj, mono.classGetFieldFromName(ctx.mainCharCls, "m_WalkSpeed"), 7.5f);
-	mono.fieldSetValue(ctx.mainCharObj, mono.classGetFieldFromName(ctx.mainCharCls, "m_RunSmoothTime"), 1.5f);
-}
-
-
-void SetupDoubleJump(TestContext& ctx)
-{
-	RMonoAPI& mono = *ctx.mono;
-
-	// This just sets the maximum distance-from-ground at which the character is still considered on the ground to some large
-	// value. Thus, the character is effectively always "on the ground", allowing multi-jump.
-	// This does not work when the character is over water, because then the distance to the ground is (probably) infinite.
-	auto groundCheck = mono.fieldGetValue<RMonoObjectPtr>(ctx.mainCharObj, mono.classGetFieldFromName(ctx.mainCharCls, "m_GroundCheck"));
-	auto groundCheckCls = mono.objectGetClass(groundCheck);
-	mono.fieldSetValue(groundCheck, mono.classGetFieldFromName(groundCheckCls, "m_RayDistance"), 1000.0f);
-}
-
-
-void PlaySound(TestContext& ctx, const std::string& soundMethodName)
-{
-	RMonoAPI& mono = *ctx.mono;
-
-	// Just call one of the methods in RedRunner.AudioManager
-	auto playSoundMethod = mono.classGetMethodFromName(ctx.audioManagerCls, soundMethodName, 1);
-	mono.runtimeInvoke(playSoundMethod, ctx.audioManagerObj, {mono.objectUnboxRefVariant(mono.objectNew(mono.domainGet(), ctx.vector3Cls))});
-}
-
-
-void GetMainCharacterPosition(TestContext& ctx, float& x, float& y)
-{
-	RMonoAPI& mono = *ctx.mono;
-
-	auto mainCharTrf = mono.propertyGetValue(mono.classGetPropertyFromName(ctx.componentCls, "transform"), ctx.mainCharObj);
-	auto mainCharPos = mono.propertyGetValue(mono.classGetPropertyFromName(ctx.transformCls, "position"), mainCharTrf);
-
-	auto xProp = mono.classGetPropertyFromName(ctx.vector3Cls, "x");
-	auto yProp = mono.classGetPropertyFromName(ctx.vector3Cls, "y");
-
-	auto xField = mono.classGetFieldFromName(ctx.vector3Cls, "x");
-	auto yField = mono.classGetFieldFromName(ctx.vector3Cls, "y");
-
-	// In more recent Unity versions, Vector3.x/y/z are properties, but the RedRunner version I'm testing on uses an older
-	// version, where they are still fields.
-	if (xProp) {
-		auto mainCharPosUnboxed = mono.objectUnboxRefVariant(mainCharPos);
-
-		// Note that we have to pass mainCharPosUnboxed as the object parameter, and NOT mainCharPos. This is because
-		// mono_property_get_value() (like mono_runtime_invoke()) takes value-type objects as a raw pointer.
-		x = mono.objectUnbox<float>(mono.propertyGetValue(mono.classGetPropertyFromName(ctx.vector3Cls, "x"), mainCharPosUnboxed));
-		y = mono.objectUnbox<float>(mono.propertyGetValue(mono.classGetPropertyFromName(ctx.vector3Cls, "y"), mainCharPosUnboxed));
-	} else {
-		// Unlike mono_property_get_value(), mono_field_get_value() ALWAYS takes a MonoObject* as object parameter, so
-		// we have to pass the boxed object. Don't ask me why.
-		x = mono.fieldGetValue<float>(mainCharPos, xField);
-		y = mono.fieldGetValue<float>(mainCharPos, yField);
+	// Shutdown handler for console, making sure that RemoteMono will detach (at least on CTRL-C). Otherwise, the remote
+	// process will likely crash when it exits.
+	if (signal == CTRL_C_EVENT) {
+		ShutdownRequested = true;
+		return TRUE;
 	}
+	return FALSE;
 }
-
-
-RMonoObjectPtr AddCanvasText (
-		TestContext& ctx,
-		const std::string& text,
-		int fontSize,
-		float x, float y,
-		float width, float height,
-		float anchorX, float anchorY
-) {
-	RMonoAPI& mono = *ctx.mono;
-
-	// Get methods
-	auto gameObjFind = mono.methodDescSearchInClass(":Find(string)", false, ctx.gameObjCls);
-	auto gameObjGetComponent = mono.methodDescSearchInClass(":GetComponent(Type)", false, ctx.gameObjCls);
-	auto gameObjAddComponent = mono.methodDescSearchInClass(":AddComponent(Type)", false, ctx.gameObjCls);
-	auto transformSetParent = mono.methodDescSearchInClass(":SetParent(Transform)", false, ctx.transformCls);
-	auto vector2Ctor = mono.methodDescSearchInClass(":.ctor(single,single)", false, ctx.vector2Cls);
-
-	// Get properties
-	auto gameObjTransformProp = mono.classGetPropertyFromName(ctx.gameObjCls, "transform");
-
-	// NOTE: The code below creates a new GameObject with a Text component and sets up the necessary parameters for it to
-	// be displayed properly. It can be relatively hard to read the corresponding RemoteMono calls, so the equivalent
-	// C# code is displayed in the comments above it.
-
-
-	auto vector2New = [&](float x, float y) {
-		// return new Vector2(x, y);
-		auto vec2 = mono.objectNew(mono.domainGet(), ctx.vector2Cls);
-		mono.runtimeInvoke(vector2Ctor, mono.objectUnboxRefVariant(vec2), {x, y});
-		return vec2;
-	};
-
-	// GameObject scoreTextObj = GameObject.Find("Score Text");
-	// Text scoreText = (Text) scoreTextObj.GetComponent(typeof(Text));
-	// Font font = scoreText.font;
-	auto scoreTextObj = mono.runtimeInvoke(gameObjFind, nullptr, {mono.stringNew("Score Text")});
-	auto scoreText = mono.runtimeInvoke(gameObjGetComponent, scoreTextObj, {mono.typeGetObject(mono.domainGet(), mono.classGetType(ctx.textCls))});
-	auto font = mono.propertyGetValue(mono.classGetPropertyFromName(ctx.textCls, "font"), scoreText);
-
-	// GameObject newTextObj = new GameObject("RemoteMonoTestText");
-	// Transform inGameScreenTrf = GameObject.Find("In-Game Screen").transform;
-	// newTextObj.transform.SetParent(inGameScreenTrf);
-	auto newTextObj = mono.objectNew(mono.domainGet(), ctx.gameObjCls);
-	mono.runtimeInvoke(mono.classGetMethodFromName(ctx.gameObjCls, ".ctor", 1), newTextObj, {mono.stringNew("RemoteMonoTestText")});
-	auto inGameScreenTrf = mono.propertyGetValue(gameObjTransformProp, mono.runtimeInvoke(gameObjFind, nullptr, {mono.stringNew("In-Game Screen")}));
-	mono.runtimeInvoke(transformSetParent, mono.propertyGetValue(gameObjTransformProp, newTextObj), {inGameScreenTrf});
-
-	// RectTransform trf = (RectTransform) newTextObj.AddComponent(typeof(RectTransform));
-	auto trf = mono.runtimeInvoke(gameObjAddComponent, newTextObj, {mono.typeGetObject(mono.domainGet(), mono.classGetType(ctx.rectTransformCls))});
-
-	// trf.anchoredPosition = new Vector2(x, y);
-	// trf.anchorMin = new Vector2(anchorX, anchorY);
-	// trf.anchorMax = new Vector2(anchorX, anchorY);
-	// trf.localScale = new Vector2(1.0f, 1.0f);
-	// trf.sizeDelta = new Vector2(width, height);
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.rectTransformCls, "anchoredPosition"), trf,
-			{mono.objectUnboxRefVariant(vector2New(x, y))});
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.rectTransformCls, "anchorMin"), trf,
-			{mono.objectUnboxRefVariant(vector2New(anchorX, anchorY))});
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.rectTransformCls, "anchorMax"), trf,
-			{mono.objectUnboxRefVariant(vector2New(anchorX, anchorY))});
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.rectTransformCls, "localScale"), trf,
-			{mono.objectUnboxRefVariant(vector2New(1.0f, 1.0f))});
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.rectTransformCls, "sizeDelta"), trf,
-			{mono.objectUnboxRefVariant(vector2New(width, height))});
-
-	// Text newText = newTextObj.AddComponent<Text>();
-	auto newText = mono.runtimeInvoke(gameObjAddComponent, newTextObj, {mono.typeGetObject(mono.domainGet(), mono.classGetType(ctx.textCls))});
-
-	// newText.text = text;
-	// newText.fontSize = fontSize;
-	// newText.font = font;
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.textCls, "text"), newText, {mono.stringNew(text)});
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.textCls, "fontSize"), newText, {fontSize});
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.textCls, "font"), newText, {font});
-
-	// newText.color = Color.red;
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.textCls, "color"), newText, {
-			mono.objectUnboxRefVariant(mono.propertyGetValue(mono.classGetPropertyFromName(ctx.colorCls, "red"), nullptr))
-			});
-
-	return newTextObj;
-}
-
-
-void SetCanvasText(TestContext& ctx, RMonoObjectPtr textObj, const std::string& text)
-{
-	RMonoAPI& mono = *ctx.mono;
-
-	auto gameObjGetComponent = mono.methodDescSearchInClass(":GetComponent(Type)", false, ctx.gameObjCls);
-
-	auto textComp = mono.runtimeInvoke(gameObjGetComponent, textObj, {mono.typeGetObject(mono.domainGet(), mono.classGetType(ctx.textCls))});
-
-	mono.propertySetValue(mono.classGetPropertyFromName(ctx.textCls, "text"), textComp, {mono.stringNew(text)});
-}
-
 
 
 int main(int argc, char** argv)
@@ -348,6 +134,9 @@ int main(int argc, char** argv)
 
 	ctx.mono = &mono;
 
+	// Setup CTRL-C handler to gracefully shutdown the program (console-only)
+	SetConsoleCtrlHandler(WinConsoleCtrlHandler, TRUE);
+
 
 
 	// ********** USING THE REMOTEMONO API **********
@@ -383,7 +172,7 @@ int main(int argc, char** argv)
 
 	// Keep querying main character position and display it in the bottom-left text object
 	RMonoLogInfo("Will now keep updating bottom-left text with character position.");
-	while (true) {
+	while (!ShutdownRequested) {
 		float x, y;
 		GetMainCharacterPosition(ctx, x, y);
 
@@ -399,8 +188,12 @@ int main(int argc, char** argv)
 
 	// ********** CLEANUP **********
 
+	RMonoLogInfo("Detaching RemoteMono ...");
+
 	// Detach RemoteMono (optional, destructor would do it automatically)
 	mono.detach();
+
+	RMonoLogInfo("*** ALL DONE! ***");
 
 	return 0;
 }

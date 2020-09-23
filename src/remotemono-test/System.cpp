@@ -35,7 +35,7 @@ System& System::getInstance()
 
 
 System::System()
-		: mono(process)
+		: mono(process), helperCtx(&mono)
 {
 }
 

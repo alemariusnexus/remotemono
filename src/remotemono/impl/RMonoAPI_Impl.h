@@ -872,6 +872,17 @@ RMonoClassPtr RMonoAPI::getByteClass()
 }
 
 
+RMonoClassPtr RMonoAPI::getSByteClass()
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(get_sbyte_class);
+
+	return apid->apply([&](auto& e) {
+		return e.abi.i2p_RMonoClassPtr(e.api.get_sbyte_class());
+	});
+}
+
+
 RMonoClassPtr RMonoAPI::getCharClass()
 {
 	checkAttached();
@@ -903,6 +914,12 @@ RMonoVTablePtr RMonoAPI::classVTable(RMonoDomainPtr domain, RMonoClassPtr cls)
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoVTablePtr(e.api.class_vtable(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls)));
 	});
+}
+
+
+RMonoVTablePtr RMonoAPI::classVTable(RMonoClassPtr cls)
+{
+	return classVTable(domainGet(), cls);
 }
 
 
@@ -946,6 +963,17 @@ RMonoClassPtr RMonoAPI::classFromName(RMonoImagePtr image, const std::string_vie
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.class_from_name(e.abi.p2i_RMonoImagePtr(image), nameSpace, name));
+	});
+}
+
+
+RMonoClassPtr RMonoAPI::classFromMonoType(RMonoTypePtr type)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_from_mono_type);
+
+	return apid->apply([&](auto& e) {
+		return e.abi.i2p_RMonoClassPtr(e.api.class_from_mono_type(e.abi.p2i_RMonoTypePtr(type)));
 	});
 }
 
@@ -1155,6 +1183,17 @@ uint32_t RMonoAPI::classInstanceSize(RMonoClassPtr cls)
 }
 
 
+int32_t RMonoAPI::classValueSize(RMonoClassPtr cls, uint32_t* align)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_value_size);
+
+	return apid->apply([&](auto& e) {
+		return e.api.class_value_size(e.abi.p2i_RMonoClassPtr(cls), align);
+	});
+}
+
+
 
 RMonoReflectionTypePtr RMonoAPI::typeGetObject(RMonoDomainPtr domain, RMonoTypePtr type)
 {
@@ -1164,6 +1203,12 @@ RMonoReflectionTypePtr RMonoAPI::typeGetObject(RMonoDomainPtr domain, RMonoTypeP
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoReflectionTypePtr(e.api.type_get_object(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoTypePtr(type)));
 	});
+}
+
+
+RMonoReflectionTypePtr RMonoAPI::typeGetObject(RMonoTypePtr type)
+{
+	return typeGetObject(domainGet(), type);
 }
 
 
@@ -1301,6 +1346,17 @@ RMonoClassPtr RMonoAPI::fieldGetParent(RMonoClassFieldPtr field)
 }
 
 
+RMonoTypePtr RMonoAPI::fieldGetType(RMonoClassFieldPtr field)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_type);
+
+	return apid->apply([&](auto& e) {
+		return e.abi.i2p_RMonoTypePtr(e.api.field_get_type(e.abi.p2i_RMonoClassFieldPtr(field)));
+	});
+}
+
+
 std::string RMonoAPI::fieldGetName(RMonoClassFieldPtr field)
 {
 	checkAttached();
@@ -1345,10 +1401,6 @@ void RMonoAPI::fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, RMono
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_value);
 
-	if (val.getType() == RMonoVariant::TypeCustomValueRef) {
-		throw RMonoException("mono_field_get_value() does not support RMonoVariant::TypeCustomValueRef.");
-	}
-
 	return apid->apply([&](auto& e) {
 		if (obj) {
 			e.api.field_get_value(e.abi.p2i_RMonoObjectPtr(obj), e.abi.p2i_RMonoClassFieldPtr(field), val);
@@ -1374,9 +1426,30 @@ T RMonoAPI::fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field)
 	if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
 		fieldGetValue(obj, field, &val);
 	} else {
-		fieldGetValue(obj, field, RMonoVariant(&val, sizeof(T), true));
+		fieldGetValue(obj, field, RMonoVariant(&val));
 	}
 	return val;
+}
+
+
+RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_value_object);
+
+	return apid->apply([&](auto& e) {
+		return e.abi.i2p_RMonoObjectPtr(e.api.field_get_value_object (
+				e.abi.p2i_RMonoDomainPtr(domain),
+				e.abi.p2i_RMonoClassFieldPtr(field),
+				e.abi.p2i_RMonoObjectPtr(obj)
+				));
+	});
+}
+
+
+RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoClassFieldPtr field, RMonoObjectPtr obj)
+{
+	return fieldGetValueObject(domainGet(), field, obj);
 }
 
 
@@ -1395,10 +1468,6 @@ void RMonoAPI::fieldStaticGetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr fie
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_static_get_value);
-
-	if (val.getType() == RMonoVariant::TypeCustomValueRef) {
-		throw RMonoException("mono_field_static_get_value() does not support RMonoVariant::TypeCustomValueRef.");
-	}
 
 	apid->apply([&](auto& e) {
 		e.api.field_static_get_value(e.abi.p2i_RMonoVTablePtr(vtable), e.abi.p2i_RMonoClassFieldPtr(field), val);
@@ -1419,7 +1488,7 @@ T RMonoAPI::fieldStaticGetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr field)
 	if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
 		fieldStaticGetValue(vtable, field, &val);
 	} else {
-		fieldStaticGetValue(vtable, field, RMonoVariant(&val, sizeof(T), true));
+		fieldStaticGetValue(vtable, field, RMonoVariant(&val));
 	}
 	return val;
 }
@@ -1435,6 +1504,17 @@ uint32_t RMonoAPI::fieldGetOffset(RMonoClassFieldPtr field)
 	});
 }
 
+
+
+RMonoClassPtr RMonoAPI::methodGetClass(RMonoMethodPtr method)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_get_class);
+
+	return apid->apply([&](auto& e) {
+		return e.abi.i2p_RMonoClassPtr(e.api.method_get_class(e.abi.p2i_RMonoMethodPtr(method)));
+	});
+}
 
 
 std::string RMonoAPI::methodGetName(RMonoMethodPtr method)
@@ -1455,6 +1535,17 @@ std::string RMonoAPI::methodFullName(RMonoMethodPtr method, bool signature)
 
 	return apid->apply([&](auto& e) {
 		return e.api.method_full_name(e.abi.p2i_RMonoMethodPtr(method), e.abi.p2i_rmono_bool(signature ? 1 : 0));
+	});
+}
+
+
+uint32_t RMonoAPI::methodGetFlags(RMonoMethodPtr method, uint32_t* iflags)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_get_flags);
+
+	return apid->apply([&](auto& e) {
+		return e.api.method_get_flags(e.abi.p2i_RMonoMethodPtr(method), iflags);
 	});
 }
 
@@ -1744,6 +1835,12 @@ RMonoObjectPtr RMonoAPI::objectNew(RMonoDomainPtr domain, RMonoClassPtr cls)
 }
 
 
+RMonoObjectPtr RMonoAPI::objectNew(RMonoClassPtr cls)
+{
+	return objectNew(domainGet(), cls);
+}
+
+
 void RMonoAPI::runtimeObjectInit(const RMonoVariant& obj)
 {
 	checkAttached();
@@ -1762,7 +1859,7 @@ T RMonoAPI::objectUnbox(RMonoObjectPtr obj)
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_unbox);
 
 	T res;
-	RMonoVariant var(&res, sizeof(T), true);
+	RMonoVariant var(&res);
 	apid->apply([&](auto& e) {
 		e.api.object_unbox(var, e.abi.p2i_RMonoObjectPtr(obj));
 	});
@@ -1770,31 +1867,17 @@ T RMonoAPI::objectUnbox(RMonoObjectPtr obj)
 }
 
 
-rmono_voidp RMonoAPI::objectUnboxRef(RMonoObjectPtr obj)
+RMonoVariant RMonoAPI::objectUnboxRaw(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_unbox);
 
-	rmono_voidp p = 0;
-	RMonoVariant var(&p, RMonoVariant::customValueRef);
+	rmono_voidp p;
+	RMonoVariant var(&p, RMonoVariant::rawPtr);
 	apid->apply([&](auto& e) {
 		e.api.object_unbox(var, e.abi.p2i_RMonoObjectPtr(obj));
 	});
-	return p;
-}
-
-
-RMonoVariant RMonoAPI::objectUnboxRefVariant(RMonoObjectPtr obj)
-{
-	checkAttached();
-	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_unbox);
-
-	rmono_voidp p = 0;
-	RMonoVariant var(&p, RMonoVariant::customValueRef);
-	apid->apply([&](auto& e) {
-		e.api.object_unbox(var, e.abi.p2i_RMonoObjectPtr(obj));
-	});
-	return RMonoVariant(p, RMonoVariant::customValueRef);
+	return RMonoVariant(p, RMonoVariant::rawPtr);
 }
 
 
@@ -1806,6 +1889,12 @@ RMonoObjectPtr RMonoAPI::valueBox(RMonoDomainPtr domain, RMonoClassPtr cls, cons
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.value_box(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls), val));
 	});
+}
+
+
+RMonoObjectPtr RMonoAPI::valueBox(RMonoClassPtr cls, const RMonoVariant& val)
+{
+	return valueBox(domainGet(), cls, val);
 }
 
 
@@ -1915,6 +2004,12 @@ RMonoStringPtr RMonoAPI::stringNewUTF16(RMonoDomainPtr domain, const std::u16str
 }
 
 
+RMonoStringPtr RMonoAPI::stringNewUTF16(const std::u16string_view& str)
+{
+	return stringNewUTF16(domainGet(), str);
+}
+
+
 RMonoStringPtr RMonoAPI::stringNewUTF32(RMonoDomainPtr domain, const std::u32string_view& str)
 {
 	checkAttached();
@@ -1924,6 +2019,12 @@ RMonoStringPtr RMonoAPI::stringNewUTF32(RMonoDomainPtr domain, const std::u32str
 		typedef decltype(e.abi) ABI;
 		return e.abi.i2p_RMonoStringPtr(e.api.string_new_utf32(e.abi.p2i_RMonoDomainPtr(domain), str, (int32_t) str.size()));
 	});
+}
+
+
+RMonoStringPtr RMonoAPI::stringNewUTF32(const std::u32string_view& str)
+{
+	return stringNewUTF32(domainGet(), str);
 }
 
 
@@ -2006,6 +2107,12 @@ RMonoArrayPtr RMonoAPI::arrayNew(RMonoDomainPtr domain, RMonoClassPtr cls, rmono
 }
 
 
+RMonoArrayPtr RMonoAPI::arrayNew(RMonoClassPtr cls, rmono_uintptr_t n)
+{
+	return arrayNew(domainGet(), cls, n);
+}
+
+
 RMonoArrayPtr RMonoAPI::arrayNewFull (
 		RMonoDomainPtr domain,
 		RMonoClassPtr cls,
@@ -2082,6 +2189,15 @@ RMonoArrayPtr RMonoAPI::arrayNewFull (
 }
 
 
+RMonoArrayPtr RMonoAPI::arrayNewFull (
+		RMonoClassPtr cls,
+		const std::vector<rmono_uintptr_t>& lengths,
+		const std::vector<rmono_intptr_t>& lowerBounds
+) {
+	return arrayNewFull(cls, lengths, lowerBounds);
+}
+
+
 RMonoClassPtr RMonoAPI::arrayClassGet(RMonoClassPtr cls, uint32_t rank)
 {
 	checkAttached();
@@ -2100,7 +2216,7 @@ rmono_voidp RMonoAPI::arrayAddrWithSize(RMonoArrayPtr arr, rmono_int size, rmono
 
 	rmono_voidp addr;
 	apid->apply([&](auto& e) {
-		e.api.array_addr_with_size(RMonoVariant(&addr, RMonoVariant::customValueRef), e.abi.p2i_RMonoArrayPtr(arr),
+		e.api.array_addr_with_size(RMonoVariant(&addr, RMonoVariant::rawPtr), e.abi.p2i_RMonoArrayPtr(arr),
 				e.abi.p2i_rmono_int(size), e.abi.p2i_rmono_uintptr_t(idx));
 	});
 	return addr;
@@ -2167,13 +2283,16 @@ T RMonoAPI::arrayGet(RMonoArrayPtr arr, rmono_uintptr_t idx)
 	apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
 
+		// TODO: What about custom value types? Should probably provide a version with RMonoVariant output parameter instead
+		// of templated return type.
+
 		// NOTE: Mono's original macros for mono_array_get() and mono_array_set*() directly use sizeof() to determine
 		// the element size, so it seems safe to do the same here, and it's certainly much faster.
 		if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
 			e.api.array_addr_with_size(RMonoVariant(&val), e.abi.p2i_RMonoArrayPtr(arr),
 					e.abi.p2i_rmono_int((rmono_int) sizeof(typename ABI::IRMonoObjectPtrRaw)), e.abi.p2i_rmono_uintptr_t(idx));
 		} else {
-			e.api.array_addr_with_size(RMonoVariant(&val, sizeof(T), true), e.abi.p2i_RMonoArrayPtr(arr),
+			e.api.array_addr_with_size(RMonoVariant(&val), e.abi.p2i_RMonoArrayPtr(arr),
 					e.abi.p2i_rmono_int((rmono_int) sizeof(T)), e.abi.p2i_rmono_uintptr_t(idx));
 		}
 	});
@@ -2186,19 +2305,22 @@ void RMonoAPI::arraySet(RMonoArrayPtr arr, rmono_uintptr_t idx, const RMonoVaria
 	checkAttached();
 
 	apid->apply([&](auto& e) {
+		// TODO: Maybe some auto-unboxing support? Probably just need to add it to rmono_array_setref().
+
 		if (val.getType() == RMonoVariant::TypeMonoObjectPtr) {
 			e.api.rmono_array_setref(e.abi.p2i_rmono_gchandle(*arr), e.abi.p2i_rmono_uintptr_t(idx),
 					e.abi.p2i_rmono_gchandle(*val.getMonoObjectPtr()));
-		} else if (val.getType() == RMonoVariant::TypeCustomValueRef) {
+		} else if (val.getType() == RMonoVariant::TypeRawPtr) {
 			RMonoClassPtr arrCls = objectGetClass(arr);
 			rmono_int size = (rmono_int) arrayElementSize(arrCls);
 			rmono_voidp p = arrayAddrWithSize(arr, size, idx);
 			char* data = new char[size];
-			process.memory().Read((blackbone::ptr_t) val.getCustomValueRef(), size, data);
+			process.memory().Read((blackbone::ptr_t) val.getRawPtr(), size, data);
 			process.memory().Write((blackbone::ptr_t) p, size, data);
 			delete[] data;
 		} else {
-			rmono_int size = (rmono_int) val.getRemoteMemorySize(e.abi);
+			size_t align;
+			rmono_int size = (rmono_int) val.getRemoteMemorySize(e.abi, align);
 			rmono_voidp p = arrayAddrWithSize(arr, size, idx);
 			char* data = new char[size];
 			val.copyForRemoteMemory(e.abi, data);
@@ -2358,6 +2480,12 @@ RMonoJitInfoPtr RMonoAPI::jitInfoTableFind(RMonoDomainPtr domain, rmono_voidp ad
 }
 
 
+RMonoJitInfoPtr RMonoAPI::jitInfoTableFind(rmono_voidp addr)
+{
+	return jitInfoTableFind(domainGet(), addr);
+}
+
+
 rmono_voidp RMonoAPI::jitInfoGetCodeStart(RMonoJitInfoPtr jinfo)
 {
 	checkAttached();
@@ -2477,6 +2605,13 @@ RMonoArrayPtr RMonoAPI::arrayFromVector(RMonoDomainPtr domain, RMonoClassPtr cls
 	}
 
 	return arr;
+}
+
+
+template <typename T>
+RMonoArrayPtr RMonoAPI::arrayFromVector(RMonoClassPtr cls, const std::vector<T>& vec)
+{
+	return arrayFromVector(domainGet(), cls, vec);
 }
 
 

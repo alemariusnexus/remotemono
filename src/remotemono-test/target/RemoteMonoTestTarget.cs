@@ -207,6 +207,7 @@ public struct ValFieldTest
 {
 	public string StringField;
 	public int IntField;
+	public MyPoint PointField;
 	
 	public static int StaticIntField = 64;
 	public static ValFieldTest Instance = new ValFieldTest();
@@ -236,6 +237,10 @@ public class InvokeTest
 
 	private string op;
 	
+	public static void DoAbsolutelyNothing() {}
+	
+	public static void DoAbsolutelyNothingWithOneArg(int a) {}
+	
 	public static int StaticAdd2(int a, int b) { return a+b; }
 	
 	public static MyPoint StaticGiveMeTwoPoints(float x1, float y1, float x2, float y2, out MyPoint p2)
@@ -260,6 +265,23 @@ public class InvokeTest
 			res = a-b;
 		}
 		formatted = a + op + b + " = " + res;
+		return res;
+	}
+	
+	public int CalculateAndFormatWithPrefix(int a, int b, ref string formatted)
+	{
+		int res = 0;
+		if (op == "+") {
+			res = a+b;
+		} else if (op == "-") {
+			res = a-b;
+		}
+		string s = a + op + b + " = " + res;
+		if (formatted != null) {
+			formatted += s;
+		} else {
+			formatted = s;
+		}
 		return res;
 	}
 	
@@ -299,4 +321,77 @@ public class NativeCallTest
 	{
 		return a+b+c;
 	}
+}
+
+
+
+
+
+
+public class HelperFieldTest
+{
+	public int IntField = 13;
+	public string StringField = "The quick brown fox";
+	
+	public static FieldTest Instance = new FieldTest();
+	public static int StaticIntField = 25;
+	public static string StaticStringField = "jumps over the lazy dog";
+}
+
+
+public struct HelperValFieldTest
+{
+	public string StringField;
+	public int IntField;
+	public MyPoint PointField;
+	
+	public static int StaticIntField = 64;
+	public static ValFieldTest Instance = new ValFieldTest();
+}
+
+
+public class HelperNewObjectTest
+{
+	public int constructorUsed = 0;
+	
+	HelperNewObjectTest(float f, string s) { constructorUsed = 1; }
+	HelperNewObjectTest(int i, string s) { constructorUsed = 2; }
+}
+
+
+public class HelperPropTest
+{
+	private static float staticFloatField = 13.37f;
+	
+	private string stringField;
+	private int intField;
+	
+	public static float StaticFloatProp
+	{
+		get { return staticFloatField; }
+		set { staticFloatField = value; }
+	}
+	
+	public string StringProp
+	{
+		get { return stringField; }
+		set { stringField = value; }
+	}
+	public int IntProp
+	{
+		get { return intField; }
+		set { intField = value; }
+	}
+	
+	HelperPropTest(string s, int i)
+	{
+		StringProp = s;
+		IntProp = i;
+	}
+}
+
+
+public class HelperMethodRetTypeTest
+{
+	public static string GiveMeAString() { return "AString"; }
 }

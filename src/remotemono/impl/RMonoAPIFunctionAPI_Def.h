@@ -26,7 +26,9 @@
 #include "RMonoAPIBase_Def.h"
 #include "RMonoAPIFunctionTypeAdapters.h"
 #include "RMonoAPIFunctionSimple_Def.h"
+#include "RMonoAPIFunctionCommon_Def.h"
 #include "abi/RMonoABITypeTraits.h"
+#include "../util.h"
 
 
 
@@ -68,7 +70,7 @@ namespace remotemono
  * separately.
  */
 template <class CommonT, typename ABI, typename RetT, typename... ArgsT>
-class RMonoAPIFunctionAPIBase
+class RMonoAPIFunctionAPIBase : public RMonoAPIFunctionCommon<ABI>
 {
 public:
 	typedef RetT APIRetType;
@@ -184,16 +186,11 @@ private:
 public:
 	typedef RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...> Self;
 
-	enum ParamFlags
-	{
-		ParamFlagMonoObjectPtr = 0x01,
-		ParamFlagOut = 0x02,
-		ParamFlagDirectPtr = 0x04
-	};
-
 private:
 	typedef RMonoVariant Variant;
 	typedef RMonoVariantArray VariantArray;
+
+	typedef typename RMonoAPIFunctionCommon<ABI>::variantflags_t variantflags_t;
 
 	struct InvokeContext
 	{
@@ -201,6 +198,13 @@ private:
 
 		CommonAPIArgsTuple& apiArgs;
 		CommonWrapArgsTuple wrapArgs;
+	};
+
+	enum InvokeStep
+	{
+		StepDataBlockGetSize,
+		StepDataBlockFill,
+		StepDataBlockRead
 	};
 
 public:
@@ -214,6 +218,18 @@ protected:
 private:
 	ABI* getABI() { return static_cast<CommonT*>(this)->getABI(); }
 	RMonoAPIBase* getRemoteMonoAPI() { return static_cast<CommonT*>(this)->getRemoteMonoAPI(); }
+
+	void alignBuf(char** buf, irmono_voidp* rBufAddr, size_t alignment)
+	{
+		size_t misalignment = size_t(align(*rBufAddr, alignment) - *rBufAddr);
+		*buf += misalignment;
+		*rBufAddr += (irmono_voidp) misalignment;
+	}
+	void shiftBuf(char** buf, irmono_voidp* rBufAddr, size_t shift)
+	{
+		*buf += shift;
+		*rBufAddr += (irmono_voidp) shift;
+	}
 
 
 	CommonAPIRetType convertRawCallRet(RawRetTypeOptional x)
@@ -241,49 +257,79 @@ private:
 		}
 	}
 
+	variantflags_t buildVariantFlags(const RMonoVariant& v, bool out)
+	{
+		variantflags_t flags = 0;
 
-	// Entry points for handling both return type and all arguments. They will call the remoteDataBlockArg*() methods
-	// recursively.
-	void remoteDataBlockGetSize(InvokeContext& ctx, size_t* size);
-	void remoteDataBlockFill(InvokeContext& ctx, char** buf, irmono_voidp* rBufAddr);
-	APIRetTypeOptional remoteDataBlockRead(InvokeContext& ctx, WrapRetTypeOptional retval, char** buf);
+		if (v.getType() == Variant::TypeMonoObjectPtr) {
+			flags |= ParamFlagMonoObjectPtr;
+		} else if (v.getType() == Variant::TypeRawPtr) {
+			flags |= ParamFlagDirectPtr;
+		}
+
+		if (out) {
+			flags |= ParamFlagOut;
+		}
+		if (!v.isAutoUnboxEnabled()) {
+			flags |= ParamFlagDisableAutoUnbox;
+		}
+
+		return flags;
+	}
+
+	template <typename ArgT>
+	RMonoVariant::Direction getVariantDirectionForArg(const RMonoVariant& v)
+	{
+		RMonoVariant::Direction dir;
+
+		if constexpr (tags::has_param_tag_v<ArgT, tags::ParamInOutTag>) {
+			dir = RMonoVariant::DirectionInOut;
+		} else if constexpr (tags::has_param_tag_v<ArgT, tags::ParamOutTag>) {
+			dir = RMonoVariant::DirectionOut;
+		} else {
+			dir = RMonoVariant::DirectionIn;
+		}
+
+		if constexpr (tags::has_param_tag_v<ArgT, tags::ParamOvwrInOutTag>) {
+			RMonoVariant::Direction ovwrDir = v.getDirection();
+
+			if (ovwrDir != RMonoVariant::DirectionDefault) {
+				dir = ovwrDir;
+			}
+		}
+
+		return dir;
+	}
 
 
-	// The methods below each handle (usually) a single argument, and then call themselves recursively. They may
-	// take two different indices for the apiArgs and the wrapArgs, because there is not always an exact 1:1
-	// correspondence (e.g. for string return values, the wrap function takes an additional hidden parameter, but
-	// the API function doesn't).
 
-	template <size_t apiArgIdx, size_t wrapArgIdx, typename ArgT, typename... RestT>
-	void remoteDataBlockArgGetSize (
+
+	void handleInvokeStep (
 			InvokeContext& ctx,
-			size_t* size,
-			PackHelper<ArgT>,
-			PackHelper<RestT>... rest
+			InvokeStep step,
+			char** buf,
+			irmono_voidp* rBufAddr,
+			WrapRetTypeOptional* wrapRetval,
+			APIRetTypeOptional* apiRetval
 			);
-	template <size_t apiArgIdx, size_t wrapArgIdx>
-	void remoteDataBlockArgGetSize(InvokeContext& ctx, size_t* size) {}
+
 
 	template <size_t apiArgIdx, size_t wrapArgIdx, typename ArgT, typename... RestT>
-	void remoteDataBlockArgFill (
+	void handleInvokeStepArg (
 			InvokeContext& ctx,
+			InvokeStep step,
 			char** buf,
 			irmono_voidp* rBufAddr,
 			PackHelper<ArgT>,
 			PackHelper<RestT>... rest
 			);
 	template <size_t apiArgIdx, size_t wrapArgIdx>
-	void remoteDataBlockArgFill(InvokeContext& ctx, char** buf, irmono_voidp* rBufAddr) {}
-
-	template <size_t apiArgIdx, size_t wrapArgIdx, typename ArgT, typename... RestT>
-	void remoteDataBlockArgRead (
+	void handleInvokeStepArg (
 			InvokeContext& ctx,
+			InvokeStep step,
 			char** buf,
-			PackHelper<ArgT>,
-			PackHelper<RestT>... rest
-			);
-	template <size_t apiArgIdx, size_t wrapArgIdx>
-	void remoteDataBlockArgRead(InvokeContext& ctx, char** buf) {}
+			irmono_voidp* rBufAddr
+			) {}
 };
 
 

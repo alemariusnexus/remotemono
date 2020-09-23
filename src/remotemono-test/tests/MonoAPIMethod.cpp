@@ -123,14 +123,19 @@ TEST(MonoAPIMethodTest, RuntimeInvokeReferenceType)
 	auto pointFieldX = mono.classGetFieldFromName(pointCls, "x");
 	auto pointFieldY = mono.classGetFieldFromName(pointCls, "y");
 
+	mono.runtimeInvoke(mono.classGetMethodFromName(cls, "DoAbsolutelyNothing"), nullptr, {});
+
+	mono.runtimeInvoke(mono.classGetMethodFromName(cls, "DoAbsolutelyNothingWithOneArg"), nullptr, {(int32_t) 1337});
+
 	auto addRes = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "StaticAdd2"), nullptr, {69, 42});
+
 	ASSERT_TRUE(addRes);
 	EXPECT_EQ(mono.objectUnbox<int32_t>(addRes), int32_t(69+42));
 
 	auto p1 = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "StaticGiveMeTwoPoints"), nullptr, {
 			40.0f, 60.0f,
 			110.0f, 10.0f,
-			RMonoVariant(buf, 8, true)
+			RMonoVariant(buf, 8, false).out()
 	});
 	auto p2 = mono.valueBox(mono.domainGet(), pointCls, RMonoVariant(buf, 8));
 
@@ -140,20 +145,37 @@ TEST(MonoAPIMethodTest, RuntimeInvokeReferenceType)
 	EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p2, pointFieldX), 110.0f);
 	EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p2, pointFieldY), 10.0f);
 
-	auto mid = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "StaticPointMid"), nullptr, {
-			mono.objectUnboxRefVariant(p1),
-			mono.objectUnboxRefVariant(p2)
-	});
+	{
+		// Pass custom value types by raw pointer
 
-	EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(mid, pointFieldX), 75.0f);
-	EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(mid, pointFieldY), 35.0f);
+		auto rp1 = mono.objectUnboxRaw(p1);
+		auto rp2 = mono.objectUnboxRaw(p2);
+
+		auto mid = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "StaticPointMid"), nullptr, {
+				//mono.objectUnboxRaw(p1), mono.objectUnboxRaw(p2)
+				rp1, rp2
+		});
+
+		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(mid, pointFieldX), 75.0f);
+		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(mid, pointFieldY), 35.0f);
+	}
+
+	{
+		// Pass custom value types by boxed object (auto-unboxing in wrapper function)
+		auto mid = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "StaticPointMid"), nullptr, {p1, p2});
+		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(mid, pointFieldX), 75.0f);
+		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(mid, pointFieldY), 35.0f);
+	}
 
 	auto obj = mono.objectNew(mono.domainGet(), cls);
+
 	mono.runtimeInvoke(mono.classGetMethodFromName(cls, ".ctor", 1), obj, {mono.stringNew(mono.domainGet(), "-")});
 
 	RMonoStringPtr formatted;
-	// public float CalculateAndFormat(float a, float b, out string formatted)
-	auto resObj = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "CalculateAndFormat"), obj, {123, 456, &formatted});
+	auto resObj = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "CalculateAndFormat"), obj,
+			{123, 456, RMonoVariant(&formatted).out()}
+			);
+
 	EXPECT_EQ(mono.objectUnbox<int32_t>(resObj), -333);
 	EXPECT_EQ(mono.stringToUTF8(formatted), std::string("123-456 = -333"));
 
@@ -183,12 +205,21 @@ TEST(MonoAPIMethodTest, RuntimeInvokeValueType)
 	auto cls = mono.classFromName(img, "", "MyPoint");
 
 	auto p1 = mono.objectNew(mono.domainGet(), cls);
-	mono.runtimeInvoke(mono.classGetMethodFromName(cls, ".ctor", 2), mono.objectUnboxRefVariant(p1), {69.0f, 1337.0f});
+	mono.runtimeInvoke(mono.classGetMethodFromName(cls, ".ctor", 2), mono.objectUnboxRaw(p1), {69.0f, 1337.0f});
 
-	auto lenObj = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "length"), mono.objectUnboxRefVariant(p1));
-	ASSERT_TRUE(lenObj);
+	{
+		// Invoke on value type object by passing raw pointer
+		auto lenObj = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "length"), mono.objectUnboxRaw(p1));
+		ASSERT_TRUE(lenObj);
+		EXPECT_FLOAT_EQ(mono.objectUnbox<float>(lenObj), 1338.779f);
+	}
 
-	EXPECT_FLOAT_EQ(mono.objectUnbox<float>(lenObj), 1338.779f);
+	{
+		// Invoke on value type object by passing boxed object (auto-unboxing in wrapper function)
+		auto lenObj = mono.runtimeInvoke(mono.classGetMethodFromName(cls, "length"), p1);
+		ASSERT_TRUE(lenObj);
+		EXPECT_FLOAT_EQ(mono.objectUnbox<float>(lenObj), 1338.779f);
+	}
 }
 
 

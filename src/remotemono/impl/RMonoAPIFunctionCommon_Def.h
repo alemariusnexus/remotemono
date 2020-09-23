@@ -19,13 +19,30 @@
 
 #pragma once
 
-#include "config.h"
+#include "../config.h"
 
-#include <windows.h>
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
-#include <remotemono/log.h>
-#include <remotemono/util.h>
-#include <remotemono/RMonoAPI.h>
-#include <remotemono/helper/RMonoHelpers.h>
-#include <gtest/gtest.h>
+
+
+namespace remotemono
+{
+
+
+template <typename ABI>
+class RMonoAPIFunctionCommon
+{
+protected:
+	typedef uint16_t variantflags_t;
+
+	enum ParamFlags
+	{
+		ParamFlagMonoObjectPtr = 0x0001,
+		ParamFlagOut = 0x0002,
+		ParamFlagDirectPtr = 0x0004,
+		ParamFlagDisableAutoUnbox = 0x0008,
+
+		ParamFlagLastArrayElement = 0x8000
+	};
+};
+
+
+}

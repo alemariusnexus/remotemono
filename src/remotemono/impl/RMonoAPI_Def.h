@@ -188,6 +188,7 @@ public:
 	inline RMonoClassPtr					getArrayClass();
 	inline RMonoClassPtr					getBooleanClass();
 	inline RMonoClassPtr					getByteClass();
+	inline RMonoClassPtr					getSByteClass();
 	inline RMonoClassPtr					getCharClass();
 	inline RMonoClassPtr					getExceptionClass();
 	///@}
@@ -195,10 +196,12 @@ public:
 	///@name Mono API - Classes
 	///@{
 	inline RMonoVTablePtr					classVTable(RMonoDomainPtr domain, RMonoClassPtr cls);
+	inline RMonoVTablePtr					classVTable(RMonoClassPtr cls);
 	inline void								runtimeClassInit(RMonoVTablePtr vtable);
 	inline RMonoClassPtr					classGetParent(RMonoClassPtr cls);
 	inline RMonoTypePtr						classGetType(RMonoClassPtr cls);
 	inline RMonoClassPtr					classFromName(RMonoImagePtr image, const std::string_view& nameSpace, const std::string_view& name);
+	inline RMonoClassPtr					classFromMonoType(RMonoTypePtr type);
 	inline std::string						classGetName(RMonoClassPtr cls);
 	inline std::string						classGetNamespace(RMonoClassPtr cls);
 	inline std::vector<RMonoClassFieldPtr>	classGetFields(RMonoClassPtr cls);
@@ -213,11 +216,13 @@ public:
 	inline bool								classIsValueType(RMonoClassPtr cls);
 	inline uint32_t							classDataSize(RMonoClassPtr cls);
 	inline uint32_t							classInstanceSize(RMonoClassPtr cls);
+	inline int32_t							classValueSize(RMonoClassPtr cls, uint32_t* align = nullptr);
 	///@}
 
 	///@name Mono API - Types
 	///@{
 	inline RMonoReflectionTypePtr			typeGetObject(RMonoDomainPtr domain, RMonoTypePtr type);
+	inline RMonoReflectionTypePtr			typeGetObject(RMonoTypePtr type);
 	inline std::string						typeGetName(RMonoTypePtr type);
 	inline RMonoClassPtr					typeGetClass(RMonoTypePtr type);
 	inline rmono_int						typeGetType(RMonoTypePtr type);
@@ -233,12 +238,15 @@ public:
 	///@name Mono API - Fields
 	///@{
 	inline RMonoClassPtr					fieldGetParent(RMonoClassFieldPtr field);
+	inline RMonoTypePtr						fieldGetType(RMonoClassFieldPtr field);
 	inline std::string						fieldGetName(RMonoClassFieldPtr field);
 	inline uint32_t							fieldGetFlags(RMonoClassFieldPtr field);
 	inline void								fieldSetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, const RMonoVariant& val);
 	inline void								fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, RMonoVariant& val);
 	inline void								fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, RMonoVariant&& val);
 	template <typename T> T					fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field);
+	inline RMonoObjectPtr					fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj = nullptr);
+	inline RMonoObjectPtr					fieldGetValueObject(RMonoClassFieldPtr field, RMonoObjectPtr obj = nullptr);
 	inline void								fieldStaticSetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr field, const RMonoVariant& val);
 	inline void								fieldStaticGetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr field, RMonoVariant& val);
 	inline void								fieldStaticGetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr field, RMonoVariant&& val);
@@ -248,8 +256,10 @@ public:
 
 	///@name Mono API - Methods
 	///@{
+	inline RMonoClassPtr					methodGetClass(RMonoMethodPtr method);
 	inline std::string						methodGetName(RMonoMethodPtr method);
 	inline std::string						methodFullName(RMonoMethodPtr method, bool signature);
+	inline uint32_t							methodGetFlags(RMonoMethodPtr method, uint32_t* iflags = nullptr);
 	inline RMonoMethodSignaturePtr			methodSignature(RMonoMethodPtr method);
 	inline RMonoMethodHeaderPtr				methodGetHeader(RMonoMethodPtr method);
 	inline rmono_voidp						methodHeaderGetCode(RMonoMethodHeaderPtr header, uint32_t* codeSize, uint32_t* maxStack);
@@ -296,11 +306,12 @@ public:
 	///@{
 	inline RMonoClassPtr					objectGetClass(RMonoObjectPtr obj);
 	inline RMonoObjectPtr					objectNew(RMonoDomainPtr domain, RMonoClassPtr cls);
+	inline RMonoObjectPtr					objectNew(RMonoClassPtr cls);
 	inline void								runtimeObjectInit(const RMonoVariant& obj);
 	template <typename T> T					objectUnbox(RMonoObjectPtr obj);
-	inline rmono_voidp						objectUnboxRef(RMonoObjectPtr obj);
-	inline RMonoVariant						objectUnboxRefVariant(RMonoObjectPtr obj);
+	inline RMonoVariant						objectUnboxRaw(RMonoObjectPtr obj);
 	inline RMonoObjectPtr					valueBox(RMonoDomainPtr domain, RMonoClassPtr cls, const RMonoVariant& val);
+	inline RMonoObjectPtr					valueBox(RMonoClassPtr cls, const RMonoVariant& val);
 	inline RMonoStringPtr					objectToString(const RMonoVariant& obj, bool catchExceptions = true);
 	inline RMonoObjectPtr					objectClone(RMonoObjectPtr obj);
 	inline RMonoDomainPtr					objectGetDomain(RMonoObjectPtr obj);
@@ -314,7 +325,9 @@ public:
 	inline RMonoStringPtr					stringNew(RMonoDomainPtr domain, const std::string_view& str);
 	inline RMonoStringPtr					stringNew(const std::string_view& str);
 	inline RMonoStringPtr					stringNewUTF16(RMonoDomainPtr domain, const std::u16string_view& str);
+	inline RMonoStringPtr					stringNewUTF16(const std::u16string_view& str);
 	inline RMonoStringPtr					stringNewUTF32(RMonoDomainPtr domain, const std::u32string_view& str);
+	inline RMonoStringPtr					stringNewUTF32(const std::u32string_view& str);
 	inline std::string						stringToUTF8(RMonoStringPtr str);
 	inline std::u16string					stringToUTF16(RMonoStringPtr str);
 	inline std::u32string					stringToUTF32(RMonoStringPtr str);
@@ -326,7 +339,10 @@ public:
 	///@name Mono API - Arrays
 	///@{
 	inline RMonoArrayPtr					arrayNew(RMonoDomainPtr domain, RMonoClassPtr cls, rmono_uintptr_t n);
+	inline RMonoArrayPtr					arrayNew(RMonoClassPtr cls, rmono_uintptr_t n);
 	inline RMonoArrayPtr					arrayNewFull (	RMonoDomainPtr domain, RMonoClassPtr cls, const std::vector<rmono_uintptr_t>& lengths,
+															const std::vector<rmono_intptr_t>& lowerBounds = {});
+	inline RMonoArrayPtr					arrayNewFull (	RMonoClassPtr cls, const std::vector<rmono_uintptr_t>& lengths,
 															const std::vector<rmono_intptr_t>& lowerBounds = {});
 	inline RMonoClassPtr					arrayClassGet(RMonoClassPtr cls, uint32_t rank);
 	inline rmono_voidp						arrayAddrWithSize(RMonoArrayPtr arr, rmono_int size, rmono_uintptr_t idx);
@@ -358,6 +374,7 @@ public:
 	///@name Mono API - JIT Info
 	///@{
 	inline RMonoJitInfoPtr					jitInfoTableFind(RMonoDomainPtr domain, rmono_voidp addr);
+	inline RMonoJitInfoPtr					jitInfoTableFind(rmono_voidp addr);
 	inline rmono_voidp						jitInfoGetCodeStart(RMonoJitInfoPtr jinfo);
 	inline int32_t							jitInfoGetCodeSize(RMonoJitInfoPtr jinfo);
 	inline RMonoMethodPtr					jitInfoGetMethod(RMonoJitInfoPtr jinfo);
@@ -399,11 +416,19 @@ public:
 
 	/**
 	 * Creates a new MonoArray from the values in the given std::vector. Can be used for both value types (e.g.
-	 * `arrayFromVector<int32_t>(domain, getInt32Class(), {1,2,3})` and reference types (e.g.
-	 * `arrayFromVector<RMonoStringPtr>(domain, getStringClass(), {mono.stringNew(domain, "A"), mono.stringNew(domain, "B")})`).
+	 * `arrayFromVector<int32_t>(getInt32Class(), {1,2,3})` and reference types (e.g.
+	 * `arrayFromVector<RMonoStringPtr>(getStringClass(), {mono.stringNew("A"), mono.stringNew("B")})`).
 	 */
 	template <typename T>
 		RMonoArrayPtr						arrayFromVector(RMonoDomainPtr domain, RMonoClassPtr cls, const std::vector<T>& vec);
+
+	/**
+	 * Creates a new MonoArray from the values in the given std::vector. Can be used for both value types (e.g.
+	 * `arrayFromVector<int32_t>(getInt32Class(), {1,2,3})` and reference types (e.g.
+	 * `arrayFromVector<RMonoStringPtr>(getStringClass(), {mono.stringNew("A"), mono.stringNew("B")})`).
+	 */
+	template <typename T>
+		RMonoArrayPtr						arrayFromVector(RMonoClassPtr cls, const std::vector<T>& vec);
 
 	/**
 	 * Return a new GC handle for the same raw pointer as the parameter, but in its pinned version (see mono_gchandle_new()).

@@ -161,7 +161,14 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 			}
 		});
 
-		monoAPIWrapperCode = std::string((const char*) a->make(), a->getCodeSize());
+		void* code = a->make();
+
+		if (!code  &&  a->getCodeSize() != 0) {
+			RMonoLogError("Error assembling MonoAPI wrapper code: %d", (int) a->getError());
+			throw RMonoException("Error assembling MonoAPI wrapper code.");
+		}
+
+		monoAPIWrapperCode = std::string((const char*) code, a->getCodeSize());
 
 		for (auto& p : monoAPIWrapperInfo) {
 			p.second.offset = a->getLabelOffset(p.second.startLabel);
@@ -185,7 +192,14 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 			}
 		});
 
-		miscAPIWrapperCode = std::string((const char*) a->make(), a->getCodeSize());
+		void* code = a->make();
+
+		if (!code  &&  a->getCodeSize() != 0) {
+			RMonoLogError("Error assembling MiscAPI wrapper code: %d", (int) a->getError());
+			throw RMonoException("Error assembling MiscAPI wrapper code.");
+		}
+
+		miscAPIWrapperCode = std::string((const char*) code, a->getCodeSize());
 
 		for (auto& p : miscAPIWrapperInfo) {
 			p.second.offset = a->getLabelOffset(p.second.startLabel);

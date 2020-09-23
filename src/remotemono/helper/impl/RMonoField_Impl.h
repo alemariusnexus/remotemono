@@ -21,9 +21,7 @@
 
 #include "../../config.h"
 
-#include "RMonoRemoteException_Def.h"
-
-#include "../RMonoAPI_Def.h"
+#include "RMonoField_Def.h"
 
 
 
@@ -31,31 +29,16 @@ namespace remotemono
 {
 
 
-void RMonoRemoteException::fetchRemoteData() noexcept
+RMonoObject RMonoField::getBoxed()
 {
-	if (dataFetched) {
-		return;
-	}
-
-	try {
-		auto mono = static_cast<RMonoAPI*>(ex.getMonoAPI());
-
-		if (mono) {
-			auto cls = mono->objectGetClass(ex);
-			auto msgProp = mono->classGetPropertyFromName(cls, "Message");
-			auto msgGet = mono->propertyGetGetMethod(msgProp);
-			auto msgStr = mono->runtimeInvoke(msgGet, ex);
-			message = mono->stringToUTF8(msgStr);
-
-			toStrRes = mono->objectToStringUTF8(ex);
+	if (isStatic()) {
+		return RMonoObject(d->ctx, d->mono->fieldGetValueObject(d->field, RMonoObjectPtr()));
+	} else {
+		if (!isInstanced()) {
+			throw RMonoException("Field is non-static but RMonoField object is non-instanced.");
 		}
-	} catch (std::exception& ex) {
-		RMonoLogError("RMonoRemoteException::fetchRemoteData() caught an exception: %s", ex.what());
-	} catch (...) {
-		RMonoLogError("RMonoRemoteException::fetchRemoteData() caught an exception.");
+		return RMonoObject(d->ctx, d->mono->fieldGetValueObject(d->field, id->obj));
 	}
-
-	dataFetched = true;
 }
 
 

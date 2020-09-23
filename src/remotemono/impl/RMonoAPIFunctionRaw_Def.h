@@ -26,6 +26,7 @@
 #include <BlackBone/Process/RPC/RemoteFunction.hpp>
 #include "RMonoAPIFunctionTypeAdapters.h"
 #include "RMonoAPIFunctionSimple_Def.h"
+#include "RMonoAPIFunctionCommon_Def.h"
 
 
 namespace remotemono
@@ -45,7 +46,7 @@ namespace remotemono
  * directly invoke the raw remote function without any wrapper functionality or type conversions.
  */
 template <class CommonT, typename ABI, typename RetT, typename... ArgsT>
-class RMonoAPIFunctionRawBase
+class RMonoAPIFunctionRawBase : public RMonoAPIFunctionCommon<ABI>
 {
 public:
 	typedef RetT RawRetType;

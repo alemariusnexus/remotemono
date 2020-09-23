@@ -19,13 +19,18 @@
 
 #pragma once
 
-#include "config.h"
+#include "../config.h"
 
-#include <windows.h>
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
-#include <remotemono/log.h>
-#include <remotemono/util.h>
-#include <remotemono/RMonoAPI.h>
-#include <remotemono/helper/RMonoHelpers.h>
-#include <gtest/gtest.h>
+#include "impl/RMonoHelperContext_Def.h"
+#include "impl/RMonoClass_Def.h"
+#include "impl/RMonoField_Def.h"
+#include "impl/RMonoMethod_Def.h"
+#include "impl/RMonoProperty_Def.h"
+#include "impl/RMonoObject_Def.h"
+
+#include "impl/RMonoHelperContext_Impl.h"
+#include "impl/RMonoClass_Impl.h"
+#include "impl/RMonoField_Impl.h"
+#include "impl/RMonoMethod_Impl.h"
+#include "impl/RMonoProperty_Impl.h"
+#include "impl/RMonoObject_Impl.h"
