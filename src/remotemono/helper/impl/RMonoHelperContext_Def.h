@@ -37,14 +37,22 @@ class RMonoObject;
 
 class RMonoHelperContext
 {
+private:
+	enum Flags {
+		FlagEnableExtendedVerification = 0x01
+	};
+
 public:
 	RMonoHelperContext(RMonoAPI* mono)
-			: mono(mono)
+			: mono(mono), flags(0)
 	{
 		init();
 	}
 
 	RMonoAPI* getMonoAPI() const { return mono; }
+
+	void setExtendedVerificationEnabled(bool enabled);
+	bool isExtendedVerificationEnabled() const { return (flags & FlagEnableExtendedVerification) != 0; }
 
 	inline RMonoClass getCachedClass(RMonoClassPtr cls);
 
@@ -60,6 +68,8 @@ private:
 
 private:
 	RMonoAPI* mono;
+
+	int flags;
 
 	std::unordered_map<RMonoClassPtr, RMonoClass> classesByPtr;
 

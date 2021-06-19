@@ -37,6 +37,9 @@ RMonoObject RMonoField::getBoxed()
 		if (!isInstanced()) {
 			throw RMonoException("Field is non-static but RMonoField object is non-instanced.");
 		}
+		if (!id->obj) {
+			throw RMonoException("Field is non-static but instance is invalid.");
+		}
 		return RMonoObject(d->ctx, d->mono->fieldGetValueObject(d->field, id->obj));
 	}
 }

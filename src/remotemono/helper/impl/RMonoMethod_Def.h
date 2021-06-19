@@ -101,11 +101,11 @@ public:
 
 	bool isInstanced() const { return (bool) id; }
 
-	RMonoClass getClass() const { return d->cls; }
+	RMonoClass getClass() const { assertValid(); return d->cls; }
 
-	bool isStatic() const { return (d->flags & METHOD_ATTRIBUTE_STATIC) != 0; }
+	bool isStatic() const { assertValid(); return (d->flags & METHOD_ATTRIBUTE_STATIC) != 0; }
 
-	uint32_t getFlags() const { return d->flags; }
+	uint32_t getFlags() const { assertValid(); return d->flags; }
 
 	inline RMonoObject invoke(RMonoVariantArray& args);
 	inline RMonoObject invoke(RMonoVariantArray&& args);
@@ -119,7 +119,15 @@ public:
 	template <typename... VariantT>
 	inline RMonoObject operator()(VariantT... args);
 
-	rmono_voidp compile() const { return d->mono->compileMethod(d->method); }
+	rmono_voidp compile() const { assertValid(); return d->mono->compileMethod(d->method); }
+
+private:
+	void assertValid() const
+	{
+		if (!isValid()) {
+			throw RMonoException("Invalid method");
+		}
+	}
 
 private:
 	std::shared_ptr<Data> d;

@@ -39,6 +39,9 @@ RMonoMethod RMonoProperty::getter() const
 		if (!isInstanced()) {
 			throw RMonoException("Property is non-static but RMonoProperty object is non-instanced.");
 		}
+		if (!id->obj) {
+			throw RMonoException("Property is non-static but instance is invalid.");
+		}
 		return id->getter;
 	}
 }
@@ -52,6 +55,9 @@ RMonoMethod RMonoProperty::setter() const
 		if (!isInstanced()) {
 			throw RMonoException("Property is non-static but RMonoProperty object is non-instanced.");
 		}
+		if (!id->obj) {
+			throw RMonoException("Property is non-static but instance is invalid.");
+		}
 		return id->setter;
 	}
 }
@@ -59,7 +65,11 @@ RMonoMethod RMonoProperty::setter() const
 
 RMonoObject RMonoProperty::get(RMonoVariantArray& args) const
 {
-	return getter().invoke(args);
+	auto getterMethod = getter();
+	if (!getterMethod) {
+		throw RMonoException("Property isn't readable");
+	}
+	return getterMethod.invoke(args);
 }
 
 
@@ -85,7 +95,11 @@ std::enable_if_t<!std::is_same_v<T, RMonoObject>, T> RMonoProperty::get() const
 
 RMonoObject RMonoProperty::set(RMonoVariantArray& args) const
 {
-	return setter().invoke(args);
+	auto setterMethod = setter();
+	if (!setterMethod) {
+		throw RMonoException("Property isn't writable");
+	}
+	return setterMethod.invoke(args);
 }
 
 

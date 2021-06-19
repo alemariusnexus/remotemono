@@ -328,6 +328,7 @@ RMonoAssemblyPtr RMonoAPI::domainAssemblyOpen(RMonoDomainPtr domain, const std::
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(domain_assembly_open);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoAssemblyPtr(e.api.domain_assembly_open(e.abi.p2i_RMonoDomainPtr(domain), name));
@@ -339,6 +340,7 @@ void RMonoAPI::domainUnload(RMonoDomainPtr domain)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(domain_unload);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	apid->apply([&](auto& e) {
 		e.api.domain_unload(e.abi.p2i_RMonoDomainPtr(domain));
@@ -350,6 +352,7 @@ std::string RMonoAPI::domainGetFriendlyName(RMonoDomainPtr domain)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(domain_get_friendly_name);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		return e.api.domain_get_friendly_name(e.abi.p2i_RMonoDomainPtr(domain));
@@ -362,6 +365,7 @@ RMonoThreadPtr RMonoAPI::threadAttach(RMonoDomainPtr domain)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(thread_attach);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoThreadPtr(e.api.thread_attach(e.abi.p2i_RMonoDomainPtr(domain)));
@@ -373,6 +377,7 @@ void RMonoAPI::threadDetach(RMonoThreadPtr thread)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(thread_detach);
+	if (!thread) throw RMonoException("Invalid thread");
 
 	apid->apply([&](auto& e) {
 		e.api.thread_detach(e.abi.p2i_RMonoThreadPtr(thread));
@@ -385,6 +390,7 @@ void RMonoAPI::assemblyClose(RMonoAssemblyPtr assembly)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_close);
+	if (!assembly) throw RMonoException("Invalid assembly");
 
 	apid->apply([&](auto& e) {
 		e.api.assembly_close(e.abi.p2i_RMonoAssemblyPtr(assembly));
@@ -419,6 +425,7 @@ RMonoImagePtr RMonoAPI::assemblyGetImage(RMonoAssemblyPtr assembly)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_get_image);
+	if (!assembly) throw RMonoException("Invalid assembly");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoImagePtr(e.api.assembly_get_image(e.abi.p2i_RMonoAssemblyPtr(assembly)));
@@ -430,6 +437,7 @@ RMonoAssemblyNamePtr RMonoAPI::assemblyGetName(RMonoAssemblyPtr assembly)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_get_name);
+	if (!assembly) throw RMonoException("Invalid assembly");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoAssemblyNamePtr(e.api.assembly_get_name(e.abi.p2i_RMonoAssemblyPtr(assembly)));
@@ -486,6 +494,7 @@ std::string RMonoAPI::assemblyNameGetName(RMonoAssemblyNamePtr assembly)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_name_get_name);
+	if (!assembly) throw RMonoException("Invalid assembly name");
 
 	return apid->apply([&](auto& e) {
 		return e.api.assembly_name_get_name(e.abi.p2i_RMonoAssemblyNamePtr(assembly));
@@ -497,6 +506,7 @@ std::string RMonoAPI::assemblyNameGetCulture(RMonoAssemblyNamePtr assembly)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_name_get_culture);
+	if (!assembly) throw RMonoException("Invalid assembly name");
 
 	return apid->apply([&](auto& e) {
 		return e.api.assembly_name_get_culture(e.abi.p2i_RMonoAssemblyNamePtr(assembly));
@@ -508,6 +518,7 @@ uint16_t RMonoAPI::assemblyNameGetVersion(RMonoAssemblyNamePtr assembly, uint16_
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_name_get_version);
+	if (!assembly) throw RMonoException("Invalid assembly name");
 
 	return apid->apply([&](auto& e) {
 		return e.api.assembly_name_get_version(e.abi.p2i_RMonoAssemblyNamePtr(assembly), minor, build, revision);
@@ -519,6 +530,7 @@ std::string RMonoAPI::stringifyAssemblyName(RMonoAssemblyNamePtr assembly)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(stringify_assembly_name);
+	if (!assembly) throw RMonoException("Invalid assembly name");
 
 	return apid->apply([&](auto& e) {
 		return e.api.stringify_assembly_name(e.abi.p2i_RMonoAssemblyNamePtr(assembly));
@@ -536,6 +548,7 @@ RMonoAssemblyPtr RMonoAPI::assemblyLoaded(RMonoAssemblyNamePtr name)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_loaded);
+	if (!name) throw RMonoException("Invalid assembly name");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoAssemblyPtr(e.api.assembly_loaded(e.abi.p2i_RMonoAssemblyNamePtr(name)));
@@ -554,6 +567,7 @@ std::string RMonoAPI::imageGetName(RMonoImagePtr image)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(image_get_name);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.api.image_get_name(e.abi.p2i_RMonoImagePtr(image));
@@ -565,6 +579,7 @@ std::string RMonoAPI::imageGetFilename(RMonoImagePtr image)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(image_get_filename);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.api.image_get_filename(e.abi.p2i_RMonoImagePtr(image));
@@ -576,6 +591,7 @@ RMonoTableInfoPtr RMonoAPI::imageGetTableInfo(RMonoImagePtr image, rmono_int tab
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(image_get_table_info);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoTableInfoPtr(e.api.image_get_table_info(e.abi.p2i_RMonoImagePtr(image), e.abi.p2i_rmono_int(tableID)));
@@ -587,6 +603,7 @@ rmono_int RMonoAPI::tableInfoGetRows(RMonoTableInfoPtr table)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(table_info_get_rows);
+	if (!table) throw RMonoException("Invalid table info");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_int(e.api.table_info_get_rows(e.abi.p2i_RMonoTableInfoPtr(table)));
@@ -598,6 +615,7 @@ rmono_voidp RMonoAPI::imageRVAMap(RMonoImagePtr image, uint32_t addr)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(image_rva_map);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.image_rva_map(e.abi.p2i_RMonoImagePtr(image), addr));
@@ -610,6 +628,7 @@ uint32_t RMonoAPI::metadataDecodeRowCol(RMonoTableInfoPtr table, rmono_int idx, 
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_decode_row_col);
+	if (!table) throw RMonoException("Invalid table info");
 
 	return apid->apply([&](auto& e) {
 		return e.api.metadata_decode_row_col(e.abi.p2i_RMonoTableInfoPtr(table), e.abi.p2i_rmono_int(idx), e.abi.p2i_rmono_uint(col));
@@ -621,6 +640,7 @@ rmono_voidp RMonoAPI::metadataGuidHeap(RMonoImagePtr image, uint32_t idx, uint8_
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_guid_heap);
+	if (!image) throw RMonoException("Invalid image");
 
 	rmono_voidp p = apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.metadata_guid_heap(e.abi.p2i_RMonoImagePtr(image), idx));
@@ -638,6 +658,7 @@ std::string RMonoAPI::metadataStringHeap(RMonoImagePtr image, uint32_t idx)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_string_heap);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.api.metadata_string_heap(e.abi.p2i_RMonoImagePtr(image), idx);
@@ -649,6 +670,7 @@ rmono_voidp RMonoAPI::metadataStringHeapRaw(RMonoImagePtr image, uint32_t idx)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_string_heap);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.metadata_string_heap.invokeRaw(e.abi.p2i_RMonoImagePtrRaw(*image), idx));
@@ -660,6 +682,7 @@ rmono_voidp RMonoAPI::metadataBlobHeap(RMonoImagePtr image, uint32_t idx)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_blob_heap);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.metadata_blob_heap(e.abi.p2i_RMonoImagePtr(image), idx));
@@ -671,6 +694,7 @@ std::string RMonoAPI::metadataUserString(RMonoImagePtr image, uint32_t idx)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_user_string);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.api.metadata_user_string(e.abi.p2i_RMonoImagePtr(image), idx);
@@ -682,6 +706,7 @@ rmono_voidp RMonoAPI::metadataUserStringRaw(RMonoImagePtr image, uint32_t idx)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(metadata_user_string);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.metadata_user_string.invokeRaw(e.abi.p2i_RMonoImagePtrRaw(*image), idx));
@@ -910,6 +935,8 @@ RMonoVTablePtr RMonoAPI::classVTable(RMonoDomainPtr domain, RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_vtable);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoVTablePtr(e.api.class_vtable(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls)));
@@ -927,6 +954,7 @@ void RMonoAPI::runtimeClassInit(RMonoVTablePtr vtable)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(runtime_class_init);
+	if (!vtable) throw RMonoException("Invalid vtable");
 
 	apid->apply([&](auto& e) {
 		e.api.runtime_class_init(e.abi.p2i_RMonoVTablePtr(vtable));
@@ -938,6 +966,7 @@ RMonoClassPtr RMonoAPI::classGetParent(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_parent);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.class_get_parent(e.abi.p2i_RMonoClassPtr(cls)));
@@ -949,6 +978,7 @@ RMonoTypePtr RMonoAPI::classGetType(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_type);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoTypePtr(e.api.class_get_type(e.abi.p2i_RMonoClassPtr(cls)));
@@ -960,6 +990,7 @@ RMonoClassPtr RMonoAPI::classFromName(RMonoImagePtr image, const std::string_vie
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_from_name);
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.class_from_name(e.abi.p2i_RMonoImagePtr(image), nameSpace, name));
@@ -971,6 +1002,7 @@ RMonoClassPtr RMonoAPI::classFromMonoType(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_from_mono_type);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.class_from_mono_type(e.abi.p2i_RMonoTypePtr(type)));
@@ -982,6 +1014,7 @@ std::string RMonoAPI::classGetName(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_name);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_get_name(e.abi.p2i_RMonoClassPtr(cls));
@@ -993,6 +1026,7 @@ std::string RMonoAPI::classGetNamespace(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_namespace);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_get_namespace(e.abi.p2i_RMonoClassPtr(cls));
@@ -1004,6 +1038,7 @@ std::vector<RMonoClassFieldPtr> RMonoAPI::classGetFields(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_fields);
+	if (!cls) throw RMonoException("Invalid class");
 
 	std::vector<RMonoClassFieldPtr> out;
 
@@ -1032,6 +1067,7 @@ std::vector<RMonoMethodPtr> RMonoAPI::classGetMethods(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_methods);
+	if (!cls) throw RMonoException("Invalid class");
 
 	std::vector<RMonoMethodPtr> out;
 
@@ -1060,6 +1096,7 @@ std::vector<RMonoPropertyPtr> RMonoAPI::classGetProperties(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_properties);
+	if (!cls) throw RMonoException("Invalid class");
 
 	std::vector<RMonoPropertyPtr> out;
 
@@ -1088,6 +1125,7 @@ RMonoClassFieldPtr RMonoAPI::classGetFieldFromName(RMonoClassPtr cls, const std:
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_field_from_name);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassFieldPtr(e.api.class_get_field_from_name(e.abi.p2i_RMonoClassPtr(cls), name));
@@ -1099,6 +1137,7 @@ RMonoMethodPtr RMonoAPI::classGetMethodFromName(RMonoClassPtr cls, const std::st
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_method_from_name);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.class_get_method_from_name(e.abi.p2i_RMonoClassPtr(cls), name, paramCount));
@@ -1110,6 +1149,7 @@ RMonoPropertyPtr RMonoAPI::classGetPropertyFromName(RMonoClassPtr cls, const std
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_property_from_name);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoPropertyPtr(e.api.class_get_property_from_name(e.abi.p2i_RMonoClassPtr(cls), name));
@@ -1121,6 +1161,7 @@ RMonoClassPtr RMonoAPI::classGetElementClass(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_element_class);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.class_get_element_class(e.abi.p2i_RMonoClassPtr(cls)));
@@ -1132,6 +1173,7 @@ uint32_t RMonoAPI::classGetFlags(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_flags);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_get_flags(e.abi.p2i_RMonoClassPtr(cls));
@@ -1143,6 +1185,7 @@ rmono_int RMonoAPI::classGetRank(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_rank);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_int(e.api.class_get_rank(e.abi.p2i_RMonoClassPtr(cls)));
@@ -1154,6 +1197,7 @@ bool RMonoAPI::classIsValueType(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_is_valuetype);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.class_is_valuetype(e.abi.p2i_RMonoClassPtr(cls))) != 0;
@@ -1165,6 +1209,7 @@ uint32_t RMonoAPI::classDataSize(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_data_size);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_data_size(e.abi.p2i_RMonoClassPtr(cls));
@@ -1176,6 +1221,7 @@ uint32_t RMonoAPI::classInstanceSize(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_instance_size);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_instance_size(e.abi.p2i_RMonoClassPtr(cls));
@@ -1187,6 +1233,7 @@ int32_t RMonoAPI::classValueSize(RMonoClassPtr cls, uint32_t* align)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_value_size);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_value_size(e.abi.p2i_RMonoClassPtr(cls), align);
@@ -1199,6 +1246,8 @@ RMonoReflectionTypePtr RMonoAPI::typeGetObject(RMonoDomainPtr domain, RMonoTypeP
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_get_object);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoReflectionTypePtr(e.api.type_get_object(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoTypePtr(type)));
@@ -1216,6 +1265,7 @@ std::string RMonoAPI::typeGetName(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_get_name);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.api.type_get_name(e.abi.p2i_RMonoTypePtr(type));
@@ -1227,6 +1277,7 @@ RMonoClassPtr RMonoAPI::typeGetClass(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_get_class);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.type_get_class(e.abi.p2i_RMonoTypePtr(type)));
@@ -1238,6 +1289,7 @@ rmono_int RMonoAPI::typeGetType(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_get_type);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_int(e.api.type_get_type(e.abi.p2i_RMonoTypePtr(type)));
@@ -1249,6 +1301,7 @@ bool RMonoAPI::typeIsByRef(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_is_byref);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.type_is_byref(e.abi.p2i_RMonoTypePtr(type))) != 0;
@@ -1260,6 +1313,7 @@ bool RMonoAPI::typeIsPointer(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_is_pointer);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.type_is_pointer(e.abi.p2i_RMonoTypePtr(type))) != 0;
@@ -1271,6 +1325,7 @@ bool RMonoAPI::typeIsReference(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_is_reference);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.type_is_reference(e.abi.p2i_RMonoTypePtr(type))) != 0;
@@ -1282,6 +1337,7 @@ bool RMonoAPI::typeIsStruct(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_is_struct);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.type_is_struct(e.abi.p2i_RMonoTypePtr(type))) != 0;
@@ -1293,6 +1349,7 @@ bool RMonoAPI::typeIsVoid(RMonoTypePtr type)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_is_void);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.type_is_void(e.abi.p2i_RMonoTypePtr(type))) != 0;
@@ -1304,6 +1361,7 @@ rmono_int RMonoAPI::typeSize(RMonoTypePtr type, rmono_int* align)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_size);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		typedef typename decltype(e.abi)::irmono_int irmono_int;
@@ -1321,6 +1379,7 @@ rmono_int RMonoAPI::typeStackSize(RMonoTypePtr type, rmono_int* align)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(type_stack_size);
+	if (!type) throw RMonoException("Invalid type");
 
 	return apid->apply([&](auto& e) {
 		typedef typename decltype(e.abi)::irmono_int irmono_int;
@@ -1339,6 +1398,7 @@ RMonoClassPtr RMonoAPI::fieldGetParent(RMonoClassFieldPtr field)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_parent);
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.field_get_parent(e.abi.p2i_RMonoClassFieldPtr(field)));
@@ -1350,6 +1410,7 @@ RMonoTypePtr RMonoAPI::fieldGetType(RMonoClassFieldPtr field)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_type);
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoTypePtr(e.api.field_get_type(e.abi.p2i_RMonoClassFieldPtr(field)));
@@ -1361,6 +1422,7 @@ std::string RMonoAPI::fieldGetName(RMonoClassFieldPtr field)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_name);
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		return e.api.field_get_name(e.abi.p2i_RMonoClassFieldPtr(field));
@@ -1372,6 +1434,7 @@ uint32_t RMonoAPI::fieldGetFlags(RMonoClassFieldPtr field)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_flags);
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		return e.api.field_get_flags(e.abi.p2i_RMonoClassFieldPtr(field));
@@ -1383,6 +1446,7 @@ void RMonoAPI::fieldSetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, const
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_set_value);
+	if (!field) throw RMonoException("Invalid field");
 
 	apid->apply([&](auto& e) {
 		if (obj) {
@@ -1400,6 +1464,7 @@ void RMonoAPI::fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, RMono
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_value);
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		if (obj) {
@@ -1436,6 +1501,8 @@ RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFi
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_value_object);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.field_get_value_object (
@@ -1457,6 +1524,8 @@ void RMonoAPI::fieldStaticSetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr fie
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_static_set_value);
+	if (!vtable) throw RMonoException("Invalid vtable");
+	if (!field) throw RMonoException("Invalid field");
 
 	apid->apply([&](auto& e) {
 		e.api.field_static_set_value(e.abi.p2i_RMonoVTablePtr(vtable), e.abi.p2i_RMonoClassFieldPtr(field), val);
@@ -1468,6 +1537,8 @@ void RMonoAPI::fieldStaticGetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr fie
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_static_get_value);
+	if (!vtable) throw RMonoException("Invalid vtable");
+	if (!field) throw RMonoException("Invalid field");
 
 	apid->apply([&](auto& e) {
 		e.api.field_static_get_value(e.abi.p2i_RMonoVTablePtr(vtable), e.abi.p2i_RMonoClassFieldPtr(field), val);
@@ -1498,6 +1569,7 @@ uint32_t RMonoAPI::fieldGetOffset(RMonoClassFieldPtr field)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_offset);
+	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
 		return e.api.field_get_offset(e.abi.p2i_RMonoClassFieldPtr(field));
@@ -1510,6 +1582,7 @@ RMonoClassPtr RMonoAPI::methodGetClass(RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_get_class);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.method_get_class(e.abi.p2i_RMonoMethodPtr(method)));
@@ -1521,6 +1594,7 @@ std::string RMonoAPI::methodGetName(RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_get_name);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.api.method_get_name(e.abi.p2i_RMonoMethodPtr(method));
@@ -1532,6 +1606,7 @@ std::string RMonoAPI::methodFullName(RMonoMethodPtr method, bool signature)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_full_name);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.api.method_full_name(e.abi.p2i_RMonoMethodPtr(method), e.abi.p2i_rmono_bool(signature ? 1 : 0));
@@ -1543,6 +1618,7 @@ uint32_t RMonoAPI::methodGetFlags(RMonoMethodPtr method, uint32_t* iflags)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_get_flags);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.api.method_get_flags(e.abi.p2i_RMonoMethodPtr(method), iflags);
@@ -1554,6 +1630,7 @@ RMonoMethodSignaturePtr RMonoAPI::methodSignature(RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_signature);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodSignaturePtr(e.api.method_signature(e.abi.p2i_RMonoMethodPtr(method)));
@@ -1565,6 +1642,7 @@ RMonoMethodHeaderPtr RMonoAPI::methodGetHeader(RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_get_header);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodHeaderPtr(e.api.method_get_header(e.abi.p2i_RMonoMethodPtr(method)));
@@ -1576,6 +1654,7 @@ rmono_voidp RMonoAPI::methodHeaderGetCode(RMonoMethodHeaderPtr header, uint32_t*
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_header_get_code);
+	if (!header) throw RMonoException("Invalid method header");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.method_header_get_code(e.abi.p2i_RMonoMethodHeaderPtr(header), codeSize, maxStack));
@@ -1609,6 +1688,8 @@ bool RMonoAPI::methodDescMatch(RMonoMethodDescPtr desc, RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_desc_match);
+	if (!desc) throw RMonoException("Invalid method desc");
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.method_desc_match(e.abi.p2i_RMonoMethodDescPtr(desc), e.abi.p2i_RMonoMethodPtr(method))) != 0;
@@ -1620,6 +1701,8 @@ RMonoMethodPtr RMonoAPI::methodDescSearchInClass(RMonoMethodDescPtr desc, RMonoC
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_desc_search_in_class);
+	if (!desc) throw RMonoException("Invalid method desc");
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.method_desc_search_in_class(e.abi.p2i_RMonoMethodDescPtr(desc), e.abi.p2i_RMonoClassPtr(cls)));
@@ -1637,6 +1720,8 @@ RMonoMethodPtr RMonoAPI::methodDescSearchInImage(RMonoMethodDescPtr desc, RMonoI
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_desc_search_in_image);
+	if (!desc) throw RMonoException("Invalid method desc");
+	if (!image) throw RMonoException("Invalid image");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.method_desc_search_in_image(e.abi.p2i_RMonoMethodDescPtr(desc), e.abi.p2i_RMonoImagePtr(image)));
@@ -1655,6 +1740,7 @@ std::string RMonoAPI::propertyGetName(RMonoPropertyPtr prop)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_name);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.api.property_get_name(e.abi.p2i_RMonoPropertyPtr(prop));
@@ -1666,6 +1752,7 @@ uint32_t RMonoAPI::propertyGetFlags(RMonoPropertyPtr prop)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_flags);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.api.property_get_flags(e.abi.p2i_RMonoPropertyPtr(prop));
@@ -1677,6 +1764,7 @@ RMonoClassPtr RMonoAPI::propertyGetParent(RMonoPropertyPtr prop)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_parent);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.property_get_parent(e.abi.p2i_RMonoPropertyPtr(prop)));
@@ -1688,6 +1776,7 @@ RMonoMethodPtr RMonoAPI::propertyGetSetMethod(RMonoPropertyPtr prop)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_set_method);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.property_get_set_method(e.abi.p2i_RMonoPropertyPtr(prop)));
@@ -1699,6 +1788,7 @@ RMonoMethodPtr RMonoAPI::propertyGetGetMethod(RMonoPropertyPtr prop)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_get_method);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.property_get_get_method(e.abi.p2i_RMonoPropertyPtr(prop)));
@@ -1710,6 +1800,7 @@ RMonoObjectPtr RMonoAPI::propertyGetValue(RMonoPropertyPtr prop, const RMonoVari
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_value);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.property_get_value(e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions));
@@ -1721,6 +1812,7 @@ RMonoObjectPtr RMonoAPI::propertyGetValue(RMonoPropertyPtr prop, const RMonoVari
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_value);
+	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.property_get_value(e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions));
@@ -1732,6 +1824,7 @@ void RMonoAPI::propertySetValue(RMonoPropertyPtr prop, const RMonoVariant& obj, 
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_set_value);
+	if (!prop) throw RMonoException("Invalid property");
 
 	apid->apply([&](auto& e) {
 		e.api.property_set_value(e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions);
@@ -1743,6 +1836,7 @@ void RMonoAPI::propertySetValue(RMonoPropertyPtr prop, const RMonoVariant& obj, 
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_set_value);
+	if (!prop) throw RMonoException("Invalid property");
 
 	apid->apply([&](auto& e) {
 		e.api.property_set_value(e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions);
@@ -1755,6 +1849,7 @@ RMonoTypePtr RMonoAPI::signatureGetReturnType(RMonoMethodSignaturePtr sig)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(signature_get_return_type);
+	if (!sig) throw RMonoException("Invalid method signature");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoTypePtr(e.api.signature_get_return_type(e.abi.p2i_RMonoMethodSignaturePtr(sig)));
@@ -1766,6 +1861,7 @@ uint32_t RMonoAPI::signatureGetCallConv(RMonoMethodSignaturePtr sig)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(signature_get_call_conv);
+	if (!sig) throw RMonoException("Invalid method signature");
 
 	return apid->apply([&](auto& e) {
 		return e.api.signature_get_call_conv(e.abi.p2i_RMonoMethodSignaturePtr(sig));
@@ -1777,6 +1873,7 @@ std::string RMonoAPI::signatureGetDesc(RMonoMethodSignaturePtr sig, bool include
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(signature_get_desc);
+	if (!sig) throw RMonoException("Invalid method signature");
 
 	return apid->apply([&](auto& e) {
 		return e.api.signature_get_desc(e.abi.p2i_RMonoMethodSignaturePtr(sig), e.abi.p2i_rmono_bool(includeNamespace ? 1 : 0));
@@ -1788,6 +1885,7 @@ std::vector<RMonoTypePtr> RMonoAPI::signatureGetParams(RMonoMethodSignaturePtr s
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(signature_get_params);
+	if (!sig) throw RMonoException("Invalid method signature");
 
 	std::vector<RMonoTypePtr> out;
 
@@ -1817,6 +1915,7 @@ RMonoClassPtr RMonoAPI::objectGetClass(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_get_class);
+	if (!obj) throw RMonoException("Invalid object");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.object_get_class(e.abi.p2i_RMonoObjectPtr(obj)));
@@ -1828,6 +1927,8 @@ RMonoObjectPtr RMonoAPI::objectNew(RMonoDomainPtr domain, RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_new);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.object_new(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls)));
@@ -1857,6 +1958,7 @@ T RMonoAPI::objectUnbox(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_unbox);
+	if (!obj) throw RMonoException("Invalid object");
 
 	T res;
 	RMonoVariant var(&res);
@@ -1871,6 +1973,7 @@ RMonoVariant RMonoAPI::objectUnboxRaw(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_unbox);
+	if (!obj) throw RMonoException("Invalid object");
 
 	rmono_voidp p;
 	RMonoVariant var(&p, RMonoVariant::rawPtr);
@@ -1885,6 +1988,8 @@ RMonoObjectPtr RMonoAPI::valueBox(RMonoDomainPtr domain, RMonoClassPtr cls, cons
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(value_box);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.value_box(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls), val));
@@ -1922,6 +2027,7 @@ RMonoObjectPtr RMonoAPI::objectClone(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_clone);
+	if (!obj) throw RMonoException("Invalid object");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.object_clone(e.abi.p2i_RMonoObjectPtr(obj)));
@@ -1933,6 +2039,7 @@ RMonoDomainPtr RMonoAPI::objectGetDomain(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_get_domain);
+	if (!obj) throw RMonoException("Invalid object");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoDomainPtr(e.api.object_get_domain(e.abi.p2i_RMonoObjectPtr(obj)));
@@ -1944,6 +2051,8 @@ RMonoMethodPtr RMonoAPI::objectGetVirtualMethod(RMonoObjectPtr obj, RMonoMethodP
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_get_virtual_method);
+	if (!obj) throw RMonoException("Invalid object");
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.object_get_virtual_method(e.abi.p2i_RMonoObjectPtr(obj), e.abi.p2i_RMonoMethodPtr(method)));
@@ -1955,6 +2064,7 @@ RMonoObjectPtr RMonoAPI::objectIsInst(RMonoObjectPtr obj, RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_isinst);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.object_isinst(e.abi.p2i_RMonoObjectPtr(obj), e.abi.p2i_RMonoClassPtr(cls)));
@@ -1966,6 +2076,7 @@ rmono_uint RMonoAPI::objectGetSize(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(object_get_size);
+	if (!obj) throw RMonoException("Invalid object");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_uint(e.api.object_get_size(e.abi.p2i_RMonoObjectPtr(obj)));
@@ -1978,6 +2089,7 @@ RMonoStringPtr RMonoAPI::stringNew(RMonoDomainPtr domain, const std::string_view
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(string_new_len);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
@@ -1996,6 +2108,7 @@ RMonoStringPtr RMonoAPI::stringNewUTF16(RMonoDomainPtr domain, const std::u16str
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(string_new_utf16);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
@@ -2014,6 +2127,7 @@ RMonoStringPtr RMonoAPI::stringNewUTF32(RMonoDomainPtr domain, const std::u32str
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(string_new_utf32);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
@@ -2076,6 +2190,7 @@ int32_t RMonoAPI::stringLength(RMonoStringPtr str)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(string_length);
+	if (!str) throw RMonoException("Invalid string");
 
 	return apid->apply([&](auto& e) {
 		return e.api.string_length(e.abi.p2i_RMonoStringPtr(str));
@@ -2087,6 +2202,7 @@ bool RMonoAPI::stringEqual(RMonoStringPtr a, RMonoStringPtr b)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(string_equal);
+	if (!a  ||  !b) throw RMonoException("Invalid string");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_bool(e.api.string_equal(e.abi.p2i_RMonoStringPtr(a), e.abi.p2i_RMonoStringPtr(b))) != 0;
@@ -2099,6 +2215,8 @@ RMonoArrayPtr RMonoAPI::arrayNew(RMonoDomainPtr domain, RMonoClassPtr cls, rmono
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_new);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoArrayPtr(e.api.array_new(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls),
@@ -2121,6 +2239,8 @@ RMonoArrayPtr RMonoAPI::arrayNewFull (
 ) {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_new_full);
+	if (!domain) throw RMonoException("Invalid domain");
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
@@ -2202,6 +2322,7 @@ RMonoClassPtr RMonoAPI::arrayClassGet(RMonoClassPtr cls, uint32_t rank)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_class_get);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.array_class_get(e.abi.p2i_RMonoClassPtr(cls), rank));
@@ -2213,6 +2334,7 @@ rmono_voidp RMonoAPI::arrayAddrWithSize(RMonoArrayPtr arr, rmono_int size, rmono
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_addr_with_size);
+	if (!arr) throw RMonoException("Invalid array");
 
 	rmono_voidp addr;
 	apid->apply([&](auto& e) {
@@ -2226,6 +2348,7 @@ rmono_voidp RMonoAPI::arrayAddrWithSize(RMonoArrayPtr arr, rmono_int size, rmono
 rmono_uintptr_t RMonoAPI::arrayLength(RMonoArrayPtr arr)
 {
 	checkAttached();
+	if (!arr) throw RMonoException("Invalid array");
 
 	return apid->apply([&](auto& e) {
 		if (e.api.array_length) {
@@ -2244,6 +2367,7 @@ int32_t RMonoAPI::arrayElementSize(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_element_size);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.array_element_size(e.abi.p2i_RMonoClassPtr(cls));
@@ -2255,6 +2379,7 @@ int32_t RMonoAPI::classArrayElementSize(RMonoClassPtr cls)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_array_element_size);
+	if (!cls) throw RMonoException("Invalid class");
 
 	return apid->apply([&](auto& e) {
 		return e.api.class_array_element_size(e.abi.p2i_RMonoClassPtr(cls));
@@ -2266,6 +2391,7 @@ RMonoArrayPtr RMonoAPI::arrayClone(RMonoArrayPtr arr)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_clone);
+	if (!arr) throw RMonoException("Invalid array");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoArrayPtr(e.api.array_clone(e.abi.p2i_RMonoArrayPtr(arr)));
@@ -2278,6 +2404,7 @@ T RMonoAPI::arrayGet(RMonoArrayPtr arr, rmono_uintptr_t idx)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(array_addr_with_size);
+	if (!arr) throw RMonoException("Invalid array");
 
 	T val;
 	apid->apply([&](auto& e) {
@@ -2303,6 +2430,7 @@ T RMonoAPI::arrayGet(RMonoArrayPtr arr, rmono_uintptr_t idx)
 void RMonoAPI::arraySet(RMonoArrayPtr arr, rmono_uintptr_t idx, const RMonoVariant& val)
 {
 	checkAttached();
+	if (!arr) throw RMonoException("Invalid array");
 
 	apid->apply([&](auto& e) {
 		// TODO: Maybe some auto-unboxing support? Probably just need to add it to rmono_array_setref().
@@ -2426,6 +2554,7 @@ rmono_int RMonoAPI::gcGetGeneration(RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(gc_get_generation);
+	if (!obj) throw RMonoException("Invalid object");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_int(e.api.gc_get_generation(e.abi.p2i_RMonoObjectPtr(obj)));
@@ -2438,6 +2567,7 @@ RMonoObjectPtr RMonoAPI::runtimeInvoke(RMonoMethodPtr method, const RMonoVariant
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(runtime_invoke);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.runtime_invoke(e.abi.p2i_RMonoMethodPtr(method), obj, params, catchExceptions));
@@ -2449,6 +2579,7 @@ RMonoObjectPtr RMonoAPI::runtimeInvoke(RMonoMethodPtr method, const RMonoVariant
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(runtime_invoke);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoObjectPtr(e.api.runtime_invoke(e.abi.p2i_RMonoMethodPtr(method), obj, params, catchExceptions));
@@ -2461,6 +2592,7 @@ rmono_voidp RMonoAPI::compileMethod(RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(compile_method);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.compile_method(e.abi.p2i_RMonoMethodPtr(method)));
@@ -2473,6 +2605,7 @@ RMonoJitInfoPtr RMonoAPI::jitInfoTableFind(RMonoDomainPtr domain, rmono_voidp ad
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(jit_info_table_find);
+	if (!domain) throw RMonoException("Invalid domain");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoJitInfoPtr(e.api.jit_info_table_find(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_rmono_voidp(addr)));
@@ -2490,6 +2623,7 @@ rmono_voidp RMonoAPI::jitInfoGetCodeStart(RMonoJitInfoPtr jinfo)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(jit_info_get_code_start);
+	if (!jinfo) throw RMonoException("Invalid jit info");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_rmono_voidp(e.api.jit_info_get_code_start(e.abi.p2i_RMonoJitInfoPtr(jinfo)));
@@ -2501,6 +2635,7 @@ int32_t RMonoAPI::jitInfoGetCodeSize(RMonoJitInfoPtr jinfo)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(jit_info_get_code_size);
+	if (!jinfo) throw RMonoException("Invalid jit info");
 
 	return apid->apply([&](auto& e) {
 		return e.api.jit_info_get_code_size(e.abi.p2i_RMonoJitInfoPtr(jinfo));
@@ -2512,6 +2647,7 @@ RMonoMethodPtr RMonoAPI::jitInfoGetMethod(RMonoJitInfoPtr jinfo)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(jit_info_get_method);
+	if (!jinfo) throw RMonoException("Invalid jit info");
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoMethodPtr(e.api.jit_info_get_method(e.abi.p2i_RMonoJitInfoPtr(jinfo)));
@@ -2524,10 +2660,22 @@ std::string RMonoAPI::disasmCode(RMonoDisHelperPtr helper, RMonoMethodPtr method
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(disasm_code);
+	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
 		return e.api.disasm_code(e.abi.p2i_RMonoDisHelperPtr(helper), e.abi.p2i_RMonoMethodPtr(method), e.abi.p2i_rmono_voidp(ip),
 				e.abi.p2i_rmono_voidp(end));
+	});
+}
+
+
+std::string RMonoAPI::pmip(rmono_voidp ip)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(pmip);
+
+	return apid->apply([&](auto& e) {
+		return e.api.pmip(e.abi.p2i_rmono_voidp(ip));
 	});
 }
 

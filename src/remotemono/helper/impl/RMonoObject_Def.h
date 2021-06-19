@@ -75,18 +75,18 @@ public:
 	bool isNull() const { return !isValid(); }
 	operator bool() const { return isValid(); }
 
-	RMonoObjectPtr operator*() const { return d->obj; }
-	operator RMonoObjectPtr() const { return d->obj; }
+	RMonoObjectPtr operator*() const { return d ? d->obj : RMonoObjectPtr(); }
+	operator RMonoObjectPtr() const { return **this; }
 
 	bool operator==(const RMonoObject& other) const { return (d && other.d) ? (d->obj == other.d->obj) : true; }
 	bool operator!=(const RMonoObject& other) const { return !(*this == other); }
 
 	RMonoObjectPtr getWrappedMonoObjectPtr() const override { return d ? d->obj : RMonoObjectPtr(); }
 
-	RMonoHelperContext* getContext() const { return d->ctx; }
-	RMonoAPI* getMonoAPI() const { return d->mono; }
+	RMonoHelperContext* getContext() const { return d ? d->ctx : nullptr; }
+	RMonoAPI* getMonoAPI() const { return d ? d->mono : nullptr; }
 
-	RMonoClass getClass() const { return d->cls; }
+	RMonoClass getClass() const { assertValid(); return d->cls; }
 
 	inline RMonoField field(const std::string& name) const;
 
@@ -118,17 +118,25 @@ public:
 	RMonoVariant inout(bool autoUnbox = true) const { return forDirection(RMonoVariant::DirectionInOut, autoUnbox); }
 
 	template <typename T>
-	T unbox() const { return d->mono->objectUnbox<T>(d->obj); }
+	T unbox() const { assertValid(); return d->mono->objectUnbox<T>(d->obj); }
 
-	RMonoVariant unboxRaw() const { return d->mono->objectUnboxRaw(d->obj); }
+	RMonoVariant unboxRaw() const { assertValid(); return d->mono->objectUnboxRaw(d->obj); }
 
-	std::string toUTF8() const { return d->mono->stringToUTF8((RMonoStringPtr) d->obj); }
+	std::string toUTF8() const { assertValid(); return d->mono->stringToUTF8((RMonoStringPtr) d->obj); }
 	std::string str() const { return toUTF8(); }
 
-	RMonoStringPtr toString() const { return d->mono->objectToString(d->obj); }
-	std::string toStringUTF8() const { return d->mono->objectToStringUTF8(d->obj); }
+	RMonoStringPtr toString() const { assertValid(); return d->mono->objectToString(d->obj); }
+	std::string toStringUTF8() const { assertValid(); return d->mono->objectToStringUTF8(d->obj); }
 
-	bool instanceof(const RMonoClassPtr cls) const { return d->mono->objectIsInst(d->obj, cls); }
+	bool instanceof(const RMonoClassPtr cls) const { assertValid(); return d->mono->objectIsInst(d->obj, cls); }
+
+private:
+	void assertValid() const
+	{
+		if (!isValid()) {
+			throw RMonoException("Invalid object");
+		}
+	}
 
 private:
 	std::shared_ptr<Data> d;

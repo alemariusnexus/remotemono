@@ -104,19 +104,23 @@ public:
 
 	bool isInstanced() const { return (bool) id; }
 
-	RMonoClass getClass() const { return d->cls; }
+	RMonoClass getClass() const { assertValid(); return d->cls; }
 
-	bool isStatic() const { return (d->flags & FIELD_ATTRIBUTE_STATIC) != 0; }
+	bool isStatic() const { assertValid(); return (d->flags & FIELD_ATTRIBUTE_STATIC) != 0; }
 
-	uint32_t getFlags() const { return d->flags; }
+	uint32_t getFlags() const { assertValid(); return d->flags; }
 
 	void set(const RMonoVariant& val)
 	{
+		assertValid();
 		if (isStatic()) {
 			d->mono->fieldStaticSetValue(d->vtable, d->field, val);
 		} else {
 			if (!isInstanced()) {
 				throw RMonoException("Field is non-static but RMonoField object is non-instanced.");
+			}
+			if (!id->obj) {
+				throw RMonoException("Field is non-static but instance is invalid.");
 			}
 			d->mono->fieldSetValue(id->obj, d->field, val);
 		}
@@ -124,11 +128,15 @@ public:
 
 	void get(RMonoVariant& val)
 	{
+		assertValid();
 		if (isStatic()) {
 			d->mono->fieldStaticGetValue(d->vtable, d->field, val);
 		} else {
 			if (!isInstanced()) {
 				throw RMonoException("Field is non-static but RMonoField object is non-instanced.");
+			}
+			if (!id->obj) {
+				throw RMonoException("Field is non-static but instance is invalid.");
 			}
 			d->mono->fieldGetValue(id->obj, d->field, val);
 		}
@@ -137,6 +145,7 @@ public:
 	template <typename T = RMonoObject>
 		T get()
 	{
+		assertValid();
 		if constexpr(std::is_same_v<T, RMonoObject>) {
 			return getBoxed();
 		} else if constexpr(std::is_same_v<T, RMonoObjectPtr>) {
@@ -148,15 +157,26 @@ public:
 				if (!isInstanced()) {
 					throw RMonoException("Field is non-static but RMonoField object is non-instanced.");
 				}
+				if (!id->obj) {
+					throw RMonoException("Field is non-static but instance is invalid.");
+				}
 				return d->mono->fieldGetValue<T>(id->obj, d->field);
 			}
 		}
 	}
 	inline RMonoObject getBoxed();
 
-	RMonoTypePtr type() const { return d->mono->fieldGetType(d->field); }
-	RMonoReflectionTypePtr typeObject() const { return d->mono->typeGetObject(type()); }
-	uint32_t offset() const { return d->mono->fieldGetOffset(d->field); }
+	RMonoTypePtr type() const { assertValid(); return d->mono->fieldGetType(d->field); }
+	RMonoReflectionTypePtr typeObject() const { assertValid(); return d->mono->typeGetObject(type()); }
+	uint32_t offset() const { assertValid(); return d->mono->fieldGetOffset(d->field); }
+
+private:
+	void assertValid() const
+	{
+		if (!isValid()) {
+			throw RMonoException("Invalid field");
+		}
+	}
 
 protected:
 	std::shared_ptr<Data> d;

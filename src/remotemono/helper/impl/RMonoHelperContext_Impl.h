@@ -55,6 +55,16 @@ void RMonoHelperContext::init()
 }
 
 
+void RMonoHelperContext::setExtendedVerificationEnabled(bool enabled)
+{
+	if (enabled) {
+		flags |= FlagEnableExtendedVerification;
+	} else {
+		flags &= ~FlagEnableExtendedVerification;
+	}
+}
+
+
 RMonoClass RMonoHelperContext::getCachedClass(RMonoClassPtr cls)
 {
 	auto it = classesByPtr.find(cls);

@@ -322,6 +322,7 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 
 	REMOTEMONO_API(	disasm_code,					false,	ReturnOwn<string>,			IRMonoDisHelperPtr, IRMonoMethodPtr,
 																						irmono_cbytep, irmono_cbytep								)
+	REMOTEMONO_API(	pmip,							false,	ReturnOwn<string>,			irmono_voidp												)
 REMOTEMONO_API_PART_END()
 
 	REMOTEMONO_API_MAIN_DECLARE(MonoAPI, 2)

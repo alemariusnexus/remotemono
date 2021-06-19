@@ -39,6 +39,9 @@ RMonoObject RMonoMethod::invoke(RMonoVariantArray& args)
 		if (!isInstanced()) {
 			throw RMonoException("Method is non-static but RMonoMethod object is non-instanced.");
 		}
+		if (!id->obj) {
+			throw RMonoException("Method is non-static but instance is invalid.");
+		}
 		res = d->mono->runtimeInvoke(d->method, id->obj, args);
 	}
 

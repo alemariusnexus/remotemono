@@ -48,7 +48,8 @@ protected:
 				setter = RMonoMethod(ctx, mono->propertyGetSetMethod(prop), cls);
 
 				// TODO: Is it possible that only one of them is static?
-				staticFlag = getter.isStatic()  ||  setter.isStatic();
+				staticFlag = (getter.isValid()  &&  getter.isStatic())
+						||  (setter.isValid()  &&  setter.isStatic());
 			}
 		}
 
@@ -112,9 +113,9 @@ public:
 
 	bool isInstanced() const { return (bool) id; }
 
-	RMonoClass getClass() const { return d->cls; }
+	RMonoClass getClass() const { assertValid(); return d->cls; }
 
-	bool isStatic() const { return d->staticFlag; }
+	bool isStatic() const { assertValid(); return d->staticFlag; }
 
 	inline RMonoMethod getter() const;
 	inline RMonoMethod setter() const;
@@ -133,6 +134,14 @@ public:
 
 	template <typename... VariantT>
 	inline RMonoObject set(VariantT... args) const;
+
+private:
+	void assertValid() const
+	{
+		if (!isValid()) {
+			throw RMonoException("Invalid property");
+		}
+	}
 
 private:
 	std::shared_ptr<Data> d;

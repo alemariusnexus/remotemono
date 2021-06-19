@@ -383,6 +383,7 @@ public:
 	///@name Mono API - Miscellaneous
 	///@{
 	inline std::string						disasmCode(RMonoDisHelperPtr helper, RMonoMethodPtr method, rmono_voidp ip, rmono_voidp end);
+	inline std::string						pmip(rmono_voidp ip);
 	///@}
 
 

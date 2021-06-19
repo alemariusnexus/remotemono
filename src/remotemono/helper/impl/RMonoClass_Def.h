@@ -128,17 +128,17 @@ public:
 	bool isNull() const { return !isValid(); }
 	operator bool() const { return isValid(); }
 
-	RMonoClassPtr operator*() const { return d->cls; }
-	operator RMonoClassPtr() const { return d->cls; }
+	RMonoClassPtr operator*() const { return d ? d->cls : RMonoClassPtr(); }
+	operator RMonoClassPtr() const { return **this; }
 
 	bool operator==(const RMonoClass& other) const { return (d && other.d) ? (d->cls == other.d->cls) : true; }
 	bool operator!=(const RMonoClass& other) const { return !(*this == other); }
 
-	RMonoHelperContext* getContext() const { return d->ctx; }
-	RMonoAPI* getMonoAPI() const { return d->mono; }
+	RMonoHelperContext* getContext() const { return d ? d->ctx : nullptr; }
+	RMonoAPI* getMonoAPI() const { return d ? d->mono : nullptr; }
 
-	std::string getName() const { return d->mono->classGetName(d->cls); }
-	std::string getNamespace() const { return d->mono->classGetNamespace(d->cls); }
+	std::string getName() const { assertValid(); return d->mono->classGetName(d->cls); }
+	std::string getNamespace() const { assertValid(); return d->mono->classGetNamespace(d->cls); }
 
 	inline RMonoField field(const std::string& name) const;
 
@@ -161,11 +161,19 @@ public:
 	template <typename... VariantT>
 	inline RMonoObject newObjectDesc(const std::string_view& argsDesc, VariantT... args);
 
-	RMonoVTablePtr vtable() const { return d->mono->classVTable(d->cls); }
-	RMonoTypePtr type() const { return d->mono->classGetType(d->cls); }
-	RMonoReflectionTypePtr typeObject() const { return d->mono->typeGetObject(type()); }
-	bool isValueType() const { return d->mono->classIsValueType(d->cls); }
-	int32_t valueSize(uint32_t* align = nullptr) const { return d->mono->classValueSize(d->cls, align); }
+	RMonoVTablePtr vtable() const { assertValid(); return d->mono->classVTable(d->cls); }
+	RMonoTypePtr type() const { assertValid(); return d->mono->classGetType(d->cls); }
+	RMonoReflectionTypePtr typeObject() const { assertValid(); return d->mono->typeGetObject(type()); }
+	bool isValueType() const { assertValid(); return d->mono->classIsValueType(d->cls); }
+	int32_t valueSize(uint32_t* align = nullptr) const { assertValid(); return d->mono->classValueSize(d->cls, align); }
+
+private:
+	void assertValid() const
+	{
+		if (!isValid()) {
+			throw RMonoException("Invalid class");
+		}
+	}
 
 private:
 	std::shared_ptr<Data> d;

@@ -37,56 +37,69 @@ namespace remotemono
 
 RMonoField RMonoClass::field(const std::string& name) const
 {
+	assertValid();
 	auto it = d->fieldsByName.find(name);
 	if (it != d->fieldsByName.end()) {
 		return it->second;
 	}
 	RMonoField f(d->ctx, d->mono->classGetFieldFromName(d->cls, name), *this);
-	d->fieldsByName.insert(std::pair<std::string, RMonoField>(name, f));
+	if (f) {
+		d->fieldsByName.insert(std::pair<std::string, RMonoField>(name, f));
+	}
 	return f;
 }
 
 
 RMonoProperty RMonoClass::property(const std::string& name) const
 {
+	assertValid();
 	auto it = d->propsByName.find(name);
 	if (it != d->propsByName.end()) {
 		return it->second;
 	}
 	RMonoProperty p(d->ctx, d->mono->classGetPropertyFromName(d->cls, name), *this);
-	d->propsByName.insert(std::pair<std::string, RMonoProperty>(name, p));
+	if (p) {
+		d->propsByName.insert(std::pair<std::string, RMonoProperty>(name, p));
+	}
 	return p;
 }
 
 
 RMonoMethod RMonoClass::method(const std::string& name, int32_t paramCount) const
 {
+	assertValid();
 	MethodNameWithParamCount key(name, paramCount);
 	auto it = d->methodsByName.find(key);
 	if (it != d->methodsByName.end()) {
 		return it->second;
 	}
 	RMonoMethod m(d->ctx, d->mono->classGetMethodFromName(d->cls, name, paramCount), *this);
-	d->methodsByName.insert(std::pair<MethodNameWithParamCount, RMonoMethod>(key, m));
+	if (m) {
+		d->methodsByName.insert(std::pair<MethodNameWithParamCount, RMonoMethod>(key, m));
+	}
 	return m;
 }
 
 
 RMonoMethod RMonoClass::methodDesc(const std::string& desc, bool includeNamespace) const
 {
+	assertValid();
 	MethodDesc key(desc, includeNamespace);
 	auto it = d->methodsByDesc.find(key);
 	if (it != d->methodsByDesc.end()) {
 		return it->second;
 	}
 	RMonoMethod m(d->ctx, d->mono->methodDescSearchInClass(desc, includeNamespace, d->cls), *this);
-	d->methodsByDesc.insert(std::pair<MethodDesc, RMonoMethod>(key, m));
+	if (m) {
+		d->methodsByDesc.insert(std::pair<MethodDesc, RMonoMethod>(key, m));
+	}
 	return m;
 }
 
 
 RMonoObject RMonoClass::allocObject()
 {
+	assertValid();
 	return RMonoObject(d->ctx, d->mono->objectNew(d->cls), *this);
 }
 

@@ -33,24 +33,28 @@ namespace remotemono
 
 RMonoField RMonoObject::field(const std::string& name) const
 {
+	assertValid();
 	return RMonoField(d->cls.field(name), *this);
 }
 
 
 RMonoProperty RMonoObject::property(const std::string& name) const
 {
+	assertValid();
 	return RMonoProperty(d->cls.property(name), *this);
 }
 
 
 RMonoMethod RMonoObject::method(const std::string& name, int32_t paramCount) const
 {
+	assertValid();
 	return RMonoMethod(d->cls.method(name, paramCount), *this);
 }
 
 
 RMonoMethod RMonoObject::methodDesc(const std::string& desc, bool includeNamespace) const
 {
+	assertValid();
 	return RMonoMethod(d->cls.methodDesc(desc, includeNamespace), *this);
 }
 
