@@ -22,6 +22,7 @@
 #include <string>
 #include <algorithm>
 #include <gtest/gtest.h>
+#include <remotemono/RMonoBackendBlackBone.h>
 #include "../System.h"
 
 
@@ -40,13 +41,21 @@ TEST(MonoAPIMiscTest, CompileMethodAndCallNative)
 	rmono_voidp staticAdd3Addr = mono.compileMethod(staticAdd3);
 	ASSERT_NE(staticAdd3Addr, 0);
 
-	auto staticAdd3Func = blackbone::MakeRemoteFunction<int32_t (*)(int32_t, int32_t, int32_t)> (
-			mono.getProcess(), (blackbone::ptr_t) staticAdd3Addr);
+#ifdef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+	backend::blackbone::RMonoBlackBoneProcess* bbProc = dynamic_cast<backend::blackbone::RMonoBlackBoneProcess*> (
+			&mono.getProcess());
 
-	auto res = staticAdd3Func.Call(staticAdd3Func.MakeArguments(5, 7, -2), mono.getWorkerThread());
-	ASSERT_TRUE((bool) res);
+	// TODO: Implement this for other backends.
+	if (bbProc) {
+		auto staticAdd3Func = blackbone::MakeRemoteFunction<int32_t (*)(int32_t, int32_t, int32_t)> (
+				**bbProc, (blackbone::ptr_t) staticAdd3Addr);
 
-	EXPECT_EQ(*res, 10);
+		auto res = staticAdd3Func.Call(staticAdd3Func.MakeArguments(5, 7, -2), (**bbProc).remote().getWorker());
+		ASSERT_TRUE((bool) res);
+
+		EXPECT_EQ(*res, 10);
+	}
+#endif
 }
 
 

@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include "RMonoHandle_FwdDef.h"
+#include "backend/RMonoBackendTypes.h"
 
 
 
@@ -34,7 +35,7 @@ namespace remotemono
 // These are the public types used by RemoteMono. They are used in the frontend classes like RMonoAPI and are independent
 // of the actual ABI that is used in the backend. In contrast, the internal types (defined in the RMonoABITypeTraits
 // ABI component) are ABI-specific and are used in the backend classes like RMonoAPIBackend or RMonoAPIFunction. The
-// internal types can be distinguished by an addition 'i' at the start of their names.
+// internal types can be distinguished by an additional 'i' at the start of their names.
 // Because these public types are supposed to work with all supported ABIs, they need to be large enough to hold the largest
 // corresponding internal type of any ABI. Conversion between these public types and the internal types is done by the
 // RMonoABIConverter ABI component. Most of the types that RemoteMono uses are either these public or the internal types,
@@ -169,7 +170,6 @@ typedef RMonoObjectHandle<RMonoStringPtrRaw>					RMonoStringPtr;
 typedef RMonoObjectHandle<RMonoArrayPtrRaw>						RMonoArrayPtr;
 typedef RMonoObjectHandle<RMonoExceptionPtrRaw>					RMonoExceptionPtr;
 typedef RMonoObjectHandle<RMonoReflectionTypePtrRaw>			RMonoReflectionTypePtr;
-
 
 
 

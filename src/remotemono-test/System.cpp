@@ -35,46 +35,49 @@ System& System::getInstance()
 
 
 System::System()
-		: mono(process), helperCtx(&mono)
+		: testBackend(nullptr), process(nullptr), mono(nullptr), helperCtx(nullptr)
 {
 }
 
 
 void System::attach(const std::string& testAssemblyPath)
 {
-	mono.attach();
+	mono = new RMonoAPI(getProcess());
+	helperCtx = new RMonoHelperContext(mono);
+
+	mono->attach();
 
 	std::string absTestAssemblyPath = fs::absolute(fs::path(testAssemblyPath)).string();
 
 	std::string fname = fs::path(testAssemblyPath).filename().string();
 	testDomainFriendlyName = fname;
 
-	if (mono.isAPIFunctionSupported("mono_domain_get_friendly_name")) {
-		for (RMonoDomainPtr dom : mono.domainList()) {
-			if (mono.domainGetFriendlyName(dom) == fname) {
+	if (mono->isAPIFunctionSupported("mono_domain_get_friendly_name")) {
+		for (RMonoDomainPtr dom : mono->domainList()) {
+			if (mono->domainGetFriendlyName(dom) == fname) {
 				RMonoLogInfo("Unloading existing remotemono-test domain ...");
-				mono.domainUnload(dom);
+				mono->domainUnload(dom);
 			}
 		}
 
-		for (RMonoDomainPtr dom : mono.domainList()) {
-			if (mono.domainGetFriendlyName(dom) == fname) {
+		for (RMonoDomainPtr dom : mono->domainList()) {
+			if (mono->domainGetFriendlyName(dom) == fname) {
 				throw TestEnvException("Domain still loaded after unloading.");
 			}
 		}
 	}
 
 	RMonoLogInfo("Creating test domain in remote process ...");
-	testDomain = mono.domainCreateAppdomain(fname);
+	testDomain = mono->domainCreateAppdomain(fname);
 
 	if (!testDomain) {
 		throw TestEnvException("Unable to create remote appdomain.");
 	}
 
-	mono.domainSet(testDomain, false);
+	mono->domainSet(testDomain, false);
 
 	RMonoLogInfo("Opening test assembly in remote process ...");
-	testAssembly = mono.domainAssemblyOpen(testDomain, absTestAssemblyPath);
+	testAssembly = mono->domainAssemblyOpen(testDomain, absTestAssemblyPath);
 
 	if (!testAssembly) {
 		throw TestEnvException("Unable to open remote test assembly");
@@ -86,5 +89,37 @@ void System::detach()
 {
 	// TODO: Can we somehow unload the domain and then still detach here?
 
-	mono.detach();
+	delete helperCtx;
+	helperCtx = nullptr;
+
+	mono->detach();
+	delete mono;
+	mono = nullptr;
+}
+
+
+backend::RMonoProcess& System::getProcess()
+{
+	if (!process) {
+		throw TestEnvException("Process not open yet.");
+	}
+	return *process;
+}
+
+
+RMonoAPI& System::getMono()
+{
+	if (!mono) {
+		throw TestEnvException("RMonoAPI not created yet.");
+	}
+	return *mono;
+}
+
+
+RMonoHelperContext& System::getMonoHelperContext()
+{
+	if (!helperCtx) {
+		throw TestEnvException("RMonoHelperContext not created yet.");
+	}
+	return *helperCtx;
 }

@@ -21,9 +21,9 @@
 
 #include "../config.h"
 
-#include <BlackBone/Process/Process.h>
 #include "RMonoHandle_Def.h"
 #include "RMonoAPIBase_Def.h"
+#include "backend/RMonoMemBlock.h"
 
 
 
@@ -52,8 +52,8 @@ void RMonoHandleAssemblyNamePtrDelete(PtrT p, RMonoAPIBase* mono)
 				assert(false);
 			}
 		} else {
-			blackbone::MemBlock block(&mono->getProcess().memory(), (blackbone::ptr_t) p, true);
-			block.Free();
+			backend::RMonoMemBlock block(&mono->getProcess(), static_cast<rmono_voidp>(p), true);
+			block.free();
 		}
 	});
 }

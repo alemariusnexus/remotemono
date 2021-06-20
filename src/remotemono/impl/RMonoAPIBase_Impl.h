@@ -31,8 +31,8 @@ namespace remotemono
 {
 
 
-RMonoAPIBase::RMonoAPIBase(blackbone::Process& process)
-		: apid(new RMonoAPIDispatcher), process(process), worker(nullptr)
+RMonoAPIBase::RMonoAPIBase(backend::RMonoProcess& process)
+		: apid(new RMonoAPIDispatcher), process(process)
 {
 }
 
@@ -70,15 +70,9 @@ RMonoAPIDispatcher* RMonoAPIBase::getAPIDispatcher()
 }
 
 
-blackbone::Process& RMonoAPIBase::getProcess()
+backend::RMonoProcess& RMonoAPIBase::getProcess()
 {
 	return process;
-}
-
-
-blackbone::ThreadPtr RMonoAPIBase::getWorkerThread()
-{
-	return worker;
 }
 
 

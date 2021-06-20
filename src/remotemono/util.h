@@ -134,6 +134,32 @@ inline std::string DumpByteArray(const char* data, size_t size)
 }
 
 
+inline std::wstring ConvertStringToWString(const std::string str)
+{
+	// Trying to avoid std::codecvt because MSVC pritns a deprecation warning for it, and we don't
+	// want to force users to have to define something to suppress it. Fuck MSVC.
+	int strLen = static_cast<int>(str.length());
+	int wideLen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), strLen, nullptr, 0);
+	std::wstring wstr;
+	wstr.resize(wideLen);
+	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), strLen, &wstr[0], static_cast<int>(wstr.length()));
+	return wstr;
+}
+
+
+inline std::string ConvertWStringToString(const std::wstring wstr)
+{
+	// Trying to avoid std::codecvt because MSVC pritns a deprecation warning for it, and we don't
+	// want to force users to have to define something to suppress it. Fuck MSVC.
+	int wstrLen = static_cast<int>(wstr.length());
+	int narrowLen = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstrLen, nullptr, 0, nullptr, nullptr);
+	std::string str;
+	str.resize(narrowLen);
+	WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstrLen, &str[0], static_cast<int>(str.length()), nullptr, nullptr);
+	return str;
+}
+
+
 
 
 

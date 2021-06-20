@@ -23,8 +23,8 @@
 
 #include <tuple>
 #include <type_traits>
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
+#include "backend/RMonoProcess.h"
+#include "backend/RMonoRPCFunc.h"
 
 
 
@@ -41,13 +41,12 @@ public:
 	typedef RetT RetType;
 	typedef std::tuple<ArgsT...> ArgsTuple;
 
-	typedef RetT (*Func)(ArgsT...);
-	typedef blackbone::RemoteFunction<Func> RemoteFunc;
+	typedef backend::RMonoRPCFunc<backend::CallConvCdecl, RetT, ArgsT...> RemoteFunc;
 
 public:
-	RMonoAPIFunctionSimple() : process(nullptr), addr(0), boundThread(nullptr), f(nullptr) {}
-	RMonoAPIFunctionSimple(blackbone::Process& proc, blackbone::ptr_t addr, blackbone::ThreadPtr boundThread = nullptr)
-			: process(&process), addr(addr), boundThread(boundThread), f(nullptr)
+	RMonoAPIFunctionSimple() : process(nullptr), addr(0), f(nullptr) {}
+	RMonoAPIFunctionSimple(backend::RMonoProcess& proc, rmono_funcp addr)
+			: process(&process), addr(addr), f(nullptr)
 	{
 		rebuildRemoteFunc();
 	}
@@ -62,19 +61,17 @@ public:
 
 		process = nullptr;
 		addr = 0;
-		boundThread = nullptr;
 		f = nullptr;
 	}
 
-	void rebuild(blackbone::Process& proc, blackbone::ptr_t addr, blackbone::ThreadPtr boundThread = nullptr)
+	void rebuild(backend::RMonoProcess& proc, rmono_funcp addr)
 	{
 		this->process = &proc;
 		this->addr = addr;
-		this->boundThread = boundThread;
 		rebuildRemoteFunc();
 	}
 
-	blackbone::ptr_t getAddress() const { return addr; }
+	rmono_funcp getAddress() const { return addr; }
 
 	operator bool() const { return f != nullptr; }
 
@@ -83,9 +80,9 @@ public:
 		assert(f);
 
 		if constexpr(!std::is_same_v<RetT, void>) {
-			return *f->Call(typename RemoteFunc::CallArguments(args...), boundThread);
+			return (*f)(args...);
 		} else {
-			f->Call(typename RemoteFunc::CallArguments(args...), boundThread);
+			(*f)(args...);
 		}
 	}
 
@@ -93,13 +90,12 @@ private:
 	void rebuildRemoteFunc()
 	{
 		delete f;
-		f = new RemoteFunc(*process, addr);
+		f = new RemoteFunc(process, addr);
 	}
 
 private:
-	blackbone::Process* process;
-	blackbone::ptr_t addr;
-	blackbone::ThreadPtr boundThread;
+	backend::RMonoProcess* process;
+	rmono_funcp addr;
 	RemoteFunc* f;
 };
 

@@ -124,7 +124,8 @@ int main(int argc, char** argv)
 	}
 
 
-	RMonoAPI mono(proc);
+	backend::blackbone::RMonoBlackBoneProcess bbProc(&proc);
+	RMonoAPI mono(bbProc);
 
 	// Attach RemoteMono
 	RMonoLogInfo("Attaching RemoteMono ...");

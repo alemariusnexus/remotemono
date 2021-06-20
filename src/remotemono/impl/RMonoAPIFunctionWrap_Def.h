@@ -23,13 +23,12 @@
 
 #include <type_traits>
 #include <tuple>
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
 #include "RMonoAPIBase_Def.h"
 #include "RMonoAPIFunctionTypeAdapters.h"
 #include "RMonoAPIFunctionSimple_Def.h"
 #include "RMonoAPIFunctionCommon_Def.h"
 #include "abi/RMonoABITypeTraits.h"
+#include "backend/RMonoAsmHelper.h"
 
 
 
@@ -85,14 +84,14 @@ public:
 	RMonoAPIFunctionWrapBase() {}
 	~RMonoAPIFunctionWrapBase() {}
 
-	void linkWrap(blackbone::ptr_t wrapFuncAddr)
+	void linkWrap(rmono_funcp wrapFuncAddr)
 	{
-		this->wrapFunc.rebuild(getRemoteMonoAPI()->getProcess(), wrapFuncAddr, getRemoteMonoAPI()->getWorkerThread());
+		this->wrapFunc.rebuild(getRemoteMonoAPI()->getProcess(), wrapFuncAddr);
 	}
 
 	RetT invokeWrap(ArgsT... args) { return wrapFunc(args...); }
 
-	blackbone::ptr_t getWrapFuncAddress() const { return wrapFunc.getAddress(); }
+	rmono_funcp getWrapFuncAddress() const { return wrapFunc.getAddress(); }
 
 private:
 	ABI* getABI() { return static_cast<CommonT*>(this)->getABI(); }
@@ -197,15 +196,15 @@ private:
 
 	struct AsmBuildContext
 	{
-		blackbone::IAsmHelper* a;
+		backend::RMonoAsmHelper* a;
 
 		bool x64;
 
-		blackbone::ptr_t gchandleGetTargetAddr;
-		blackbone::ptr_t gchandleNewAddr;
-		blackbone::ptr_t objectGetClassAddr;
-		blackbone::ptr_t classIsValuetypeAddr;
-		blackbone::ptr_t objectUnboxAddr;
+		rmono_funcp gchandleGetTargetAddr;
+		rmono_funcp gchandleNewAddr;
+		rmono_funcp objectGetClassAddr;
+		rmono_funcp classIsValuetypeAddr;
+		rmono_funcp objectUnboxAddr;
 
 		int32_t regSize;
 		int32_t rawArgStackSize;
@@ -262,7 +261,7 @@ public:
 	}
 
 public:
-	asmjit::Label compileWrap(blackbone::IAsmHelper& a);
+	asmjit::Label compileWrap(backend::RMonoAsmHelper& a);
 
 protected:
 	void resetWrap()

@@ -30,8 +30,6 @@
 #include "../log.h"
 #include "../util.h"
 
-using namespace blackbone;
-
 
 
 
@@ -59,15 +57,14 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::invokeAPIInternal (
 
 		ABI* abi = getABI();
 		RMonoAPIBase* mono = getRemoteMonoAPI();
-		Process& process = mono->getProcess();
-		ProcessMemory& mem = process.memory();
+		backend::RMonoProcess& process = mono->getProcess();
 
 		constexpr size_t numArgs = sizeof...(ArgsT);
 
-		size_t allocMinAlignment = process.core().native()->pageSize();
+		size_t allocMinAlignment = process.getPageSize();
 		assert(allocMinAlignment >= RMonoVariant::getMaxRequiredAlignment());
 
-		MemBlock dataBlock;
+		backend::RMonoMemBlock dataBlock;
 		std::unique_ptr<char[]> dataBlockBuf;
 		size_t dataBlockSize = 0;
 		size_t dataBlockRelAddr = 0; // Current address within data block
@@ -93,26 +90,26 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::invokeAPIInternal (
 		if (dataBlockSize != 0) {
 			// Allocate block (local and remote)
 			dataBlockBuf = std::move(std::unique_ptr<char[]>(new char[dataBlockSize]));
-			dataBlock = std::move(mem.Allocate(dataBlockSize, PAGE_READWRITE).result());
+			dataBlock = std::move(backend::RMonoMemBlock::alloc(&process, dataBlockSize, PAGE_READWRITE));
 
 			// Zero-initialize
 			memset(dataBlockBuf.get(), 0, dataBlockSize);
 
-			assert(dataBlock.ptr() <= (std::numeric_limits<irmono_voidp>::max)());
+			assert(*dataBlock <= (std::numeric_limits<irmono_voidp>::max)());
 
 			// Fill local data block
 			{
 				char* dataBlockBufPtr = dataBlockBuf.get();
-				irmono_voidp dataBlockAddr = (irmono_voidp) dataBlock.ptr();
+				irmono_voidp dataBlockAddr = (irmono_voidp) *dataBlock;
 
 				handleInvokeStep(ctx, StepDataBlockFill, &dataBlockBufPtr, &dataBlockAddr, nullptr, nullptr);
 
 				assert(dataBlockBufPtr == dataBlockBuf.get() + dataBlockSize);
-				assert(dataBlockAddr == ((irmono_voidp) dataBlock.ptr()) + dataBlockSize);
+				assert(dataBlockAddr == ((irmono_voidp) *dataBlock) + dataBlockSize);
 			}
 
 			// Write local data block to remote buffer
-			dataBlock.Write(0, dataBlockSize, dataBlockBuf.get());
+			dataBlock.write(0, dataBlockSize, dataBlockBuf.get());
 		} else {
 			// Still need to call it, because it initializes ctx.wrapArgs as well!
 			handleInvokeStep(ctx, StepDataBlockFill, nullptr, nullptr, nullptr, nullptr);
@@ -144,7 +141,7 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::invokeAPIInternal (
 				}
 
 				RMonoLogVerbose("Calling wrapper '%s'   -   Args (hex): [%s],   Data Block: %llX +%llX [%s]", funcName.data(),
-						argsStr.data(), dataBlock.ptr(), (long long unsigned) dataBlockSize, dataBlockStr.data());
+						argsStr.data(), *dataBlock, (long long unsigned) dataBlockSize, dataBlockStr.data());
 			} else {
 				RMonoLogVerbose("Calling wrapper '%s'   -   Args (hex): [%s],   Data Block: NONE", funcName.data(), argsStr.data());
 			}
@@ -168,7 +165,7 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::invokeAPIInternal (
 
 		// Read back the remote data block
 		if (dataBlockSize != 0) {
-			dataBlock.Read(0, dataBlock.size(), dataBlockBuf.get());
+			dataBlock.read(0, dataBlock.size(), dataBlockBuf.get());
 		}
 
 		APIRetTypeOptional apiRetval;
@@ -176,12 +173,12 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::invokeAPIInternal (
 		// Calculate return value and update output parameters
 		{
 			char* dataBlockBufPtr = dataBlockBuf.get();
-			irmono_voidp dataBlockAddr = (irmono_voidp) dataBlock.ptr();
+			irmono_voidp dataBlockAddr = (irmono_voidp) *dataBlock;
 
 			handleInvokeStep(ctx, StepDataBlockRead, &dataBlockBufPtr, &dataBlockAddr, &wrapRetval, &apiRetval);
 
 			assert(dataBlockBufPtr == dataBlockBuf.get() + dataBlockSize);
-			assert(dataBlockAddr == ((irmono_voidp) dataBlock.ptr()) + dataBlockSize);
+			assert(dataBlockAddr == ((irmono_voidp) *dataBlock) + dataBlockSize);
 		}
 
 		if constexpr(!std::is_same_v<CommonAPIRetType, void>) {
@@ -213,10 +210,11 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStep (
 		WrapRetTypeOptional* wrapRetval,
 		APIRetTypeOptional* apiRetval
 ) {
-
 	ABI* abi = getABI();
 	RMonoAPI* mono = static_cast<RMonoAPI*>(getRemoteMonoAPI());
 	RMonoAPIDispatcher* apid = mono->getAPIDispatcher();
+
+	backend::RMonoProcess& process = mono->getProcess();
 
 
 
@@ -255,7 +253,7 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStep (
 				size_t valign;
 				size_t vsize = outArg.getRemoteMemorySize(*abi, valign);
 				char* data = new char[vsize];
-				mono->getProcess().memory().Read((ptr_t) *wrapRetval, vsize, data);
+				process.readMemory(static_cast<rmono_voidp>(*wrapRetval), vsize, data);
 				outArg.updateFromRemoteMemory(*abi, *mono, data);
 				delete[] data;
 			}
@@ -295,7 +293,8 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStep (
 				uint32_t size = *strLenPtr;
 
 				CommonAPIRetType str(size, (typename RetT::Type::value_type) 0);
-				mono->getProcess().memory().Read((ptr_t) *wrapRetval, size*sizeof(typename RetT::Type::value_type), str.data());
+				process.readMemory(static_cast<rmono_voidp>(*wrapRetval),
+						size*sizeof(typename RetT::Type::value_type), str.data());
 
 				if constexpr(tags::has_return_tag_v<RetT, tags::ReturnOwnTag>) {
 					mono->free(abi->i2p_rmono_voidp(*wrapRetval));
@@ -339,7 +338,8 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStep (
 
 	else if constexpr(std::is_base_of_v<RMonoHandleTag, typename RetT::Type>) {
 		if (step == StepDataBlockRead) {
-			*apiRetval = typename RetT::Type(abi->i2p_rmono_voidp(*wrapRetval), mono, tags::has_return_tag_v<RetT, tags::ReturnOwnTag>);
+			*apiRetval = typename RetT::Type(abi->i2p_rmono_voidp(*wrapRetval), mono,
+					tags::has_return_tag_v<RetT, tags::ReturnOwnTag>);
 		}
 
 		if constexpr(sizeof...(ArgsT) != 0) {
@@ -396,7 +396,6 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStepArg (
 		PackHelper<ArgT>,
 		PackHelper<RestT>... rest
 ) {
-
 	ABI* abi = getABI();
 	RMonoAPIBase* mono = getRemoteMonoAPI();
 

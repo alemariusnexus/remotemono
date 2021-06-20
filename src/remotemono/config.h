@@ -19,6 +19,11 @@
 
 #pragma once
 
+#ifndef REMOTEMONO_BACKEND_DISABLE_BLACKBONE
+#define REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+#endif
+
+
 // BlackBone defines WordSize in Include/Macro.h as a macro (and doesn't use it anywhere else), but Qt uses
 // it as an enum identifier in qsysinfo.h, so we'll include Include/Macro.h before anything else and then
 // immdediately #undef WordSize to avoid name conflicts.
@@ -28,6 +33,8 @@
 // Macro.h uses some of it, so this means we have to include it in EVERY SINGLE FILE *sigh*
 #include <windows.h>
 
+#ifdef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+
 #ifdef WordSize
 #error Looks like you included a BlackBone header before including config.h. This won't work because of incompatibilities with Qt.
 #endif
@@ -35,6 +42,8 @@
 #include <BlackBone/Include/Macro.h>
 
 #undef WordSize
+
+#endif
 
 
 #define REMOTEMONO_VERSION_MAJOR 0

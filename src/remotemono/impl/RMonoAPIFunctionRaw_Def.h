@@ -22,8 +22,6 @@
 #include "../config.h"
 
 #include <type_traits>
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
 #include "RMonoAPIFunctionTypeAdapters.h"
 #include "RMonoAPIFunctionSimple_Def.h"
 #include "RMonoAPIFunctionCommon_Def.h"
@@ -58,14 +56,14 @@ public:
 	RMonoAPIFunctionRawBase() {}
 	~RMonoAPIFunctionRawBase() {}
 
-	void initRaw(blackbone::ptr_t rawFuncAddr)
+	void initRaw(rmono_funcp rawFuncAddr)
 	{
-		this->rawFunc.rebuild(getRemoteMonoAPI()->getProcess(), rawFuncAddr, getRemoteMonoAPI()->getWorkerThread());
+		this->rawFunc.rebuild(getRemoteMonoAPI()->getProcess(), rawFuncAddr);
 	}
 
 	RetT invokeRaw(ArgsT... args) { return rawFunc(args...); }
 
-	blackbone::ptr_t getRawFuncAddress() const { return rawFunc.getAddress(); }
+	rmono_funcp getRawFuncAddress() const { return rawFunc.getAddress(); }
 
 private:
 	RMonoAPIBase* getRemoteMonoAPI() { return static_cast<CommonT*>(this)->getRemoteMonoAPI(); }

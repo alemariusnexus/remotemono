@@ -119,7 +119,7 @@ public:
 	template <typename... VariantT>
 	inline RMonoObject operator()(VariantT... args);
 
-	rmono_voidp compile() const { assertValid(); return d->mono->compileMethod(d->method); }
+	rmono_funcp compile() const { assertValid(); return d->mono->compileMethod(d->method); }
 
 private:
 	void assertValid() const

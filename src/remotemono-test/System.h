@@ -21,8 +21,9 @@
 
 #include "config.h"
 
-#include <BlackBone/Process/Process.h>
 #include <remotemono/RMonoAPI.h>
+#include <remotemono/RMonoBackend.h>
+#include "TestBackend.h"
 
 using namespace remotemono;
 
@@ -37,9 +38,13 @@ public:
 	void attach(const std::string& testAssemblyPath);
 	void detach();
 
-	blackbone::Process& getProcess() { return process; }
-	RMonoAPI& getMono() { return mono; }
-	RMonoHelperContext& getMonoHelperContext() { return helperCtx; }
+	void setTestBackend(TestBackend* backend) { testBackend = backend; }
+	TestBackend* getTestBackend() { return testBackend; }
+
+	void setProcess(backend::RMonoProcess* process) { this->process = process; }
+	backend::RMonoProcess& getProcess();
+	RMonoAPI& getMono();
+	RMonoHelperContext& getMonoHelperContext();
 
 	RMonoDomainPtr getTestDomain() { return testDomain; }
 	RMonoAssemblyPtr getTestAssembly() { return testAssembly; }
@@ -49,9 +54,10 @@ private:
 	System();
 
 private:
-	blackbone::Process process;
-	RMonoAPI mono;
-	RMonoHelperContext helperCtx;
+	TestBackend* testBackend;
+	backend::RMonoProcess* process;
+	RMonoAPI* mono;
+	RMonoHelperContext* helperCtx;
 
 	RMonoDomainPtr testDomain;
 	RMonoAssemblyPtr testAssembly;

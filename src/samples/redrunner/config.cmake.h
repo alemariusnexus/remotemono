@@ -19,17 +19,9 @@
 
 #pragma once
 
-#include "config.h"
-
-#include <windows.h>
-
-#ifdef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
+#cmakedefine REMOTEMONO_BACKEND_ENABLE_BLACKBONE
+#ifndef REMOTEMONO_BACKEND_ENABLE_BLACKBONE
+#define REMOTEMONO_BACKEND_DISABLE_BLACKBONE
 #endif
 
-#include <remotemono/log.h>
-#include <remotemono/util.h>
-#include <remotemono/RMonoAPI.h>
-#include <remotemono/helper/RMonoHelpers.h>
-#include <gtest/gtest.h>
+#include <remotemono/config.h>

@@ -28,6 +28,10 @@
 
 #include "config.h"
 
+#ifndef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+#error "RedRunner sample currently needs the BlackBone backend to be enabled."
+#endif
+
 #include <windows.h>
 #include <BlackBone/Process/Process.h>
 #include <BlackBone/Process/RPC/RemoteFunction.hpp>
@@ -35,3 +39,5 @@
 #include <remotemono/util.h>
 #include <remotemono/RMonoAPI.h>
 #include <remotemono/helper/RMonoHelpers.h>
+#include <remotemono/RMonoBackend.h>
+#include <remotemono/RMonoBackendBlackBone.h>

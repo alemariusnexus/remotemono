@@ -19,6 +19,11 @@
 
 #pragma once
 
+#cmakedefine REMOTEMONO_BACKEND_ENABLE_BLACKBONE
+#ifndef REMOTEMONO_BACKEND_ENABLE_BLACKBONE
+#define REMOTEMONO_BACKEND_DISABLE_BLACKBONE
+#endif
+
 #include <remotemono/config.h>
 
 

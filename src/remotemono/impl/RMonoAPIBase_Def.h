@@ -22,7 +22,7 @@
 #include "../config.h"
 
 #include <list>
-#include <BlackBone/Process/Process.h>
+#include "backend/RMonoProcess.h"
 
 
 
@@ -77,22 +77,16 @@ public:
 	/**
 	 * Returns the remote process.
 	 */
-	inline blackbone::Process& getProcess();
-
-	/**
-	 * Returns the worker thread in the remote process where Mono API functions are executed.
-	 */
-	inline blackbone::ThreadPtr getWorkerThread();
+	inline backend::RMonoProcess& getProcess();
 
 protected:
-	inline RMonoAPIBase(blackbone::Process& process);
+	inline RMonoAPIBase(backend::RMonoProcess& process);
 
 protected:
 	RMonoAPIDispatcher* apid;
 	HandleBackendList registeredHandles;
 
-	blackbone::Process& process;
-	blackbone::ThreadPtr worker;
+	backend::RMonoProcess& process;
 };
 
 

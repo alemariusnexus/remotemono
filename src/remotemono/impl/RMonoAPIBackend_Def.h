@@ -24,7 +24,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
-#include <BlackBone/Process/Process.h>
 #include "RMonoTypes.h"
 #include "RMonoAPIFunctionSimple_Def.h"
 #include "RMonoAPIFunction_Def.h"
@@ -33,6 +32,8 @@
 #include "../util.h"
 #include "visit_struct/visit_struct_intrusive.hpp"
 #include "abi/RMonoABITypeTraits.h"
+#include "backend/RMonoProcess.h"
+#include "backend/RMonoMemBlock.h"
 
 
 
@@ -241,7 +242,7 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 	REMOTEMONO_API(	method_full_name,				false,	ReturnOwn<string>,			IRMonoMethodPtr, irmono_bool								)
 	REMOTEMONO_API(	method_signature,				false,	IRMonoMethodSignaturePtr,	IRMonoMethodPtr												)
 	REMOTEMONO_API(	method_get_header,				false,	IRMonoMethodHeaderPtr,		IRMonoMethodPtr												)
-	REMOTEMONO_API(	method_header_get_code,			false,	irmono_voidp,				IRMonoMethodHeaderPtr, ParamOut<uint32_t>,
+	REMOTEMONO_API(	method_header_get_code,			false,	irmono_funcp,				IRMonoMethodHeaderPtr, ParamOut<uint32_t>,
 																						ParamOut<uint32_t>											)
 	REMOTEMONO_API(	method_desc_new,				false,	ReturnOwn<IRMonoMethodDescPtr>,
 																						string_view, irmono_bool									)
@@ -316,7 +317,7 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 	REMOTEMONO_API(	compile_method,					false,	irmono_voidp,				IRMonoMethodPtr												)
 
 	REMOTEMONO_API(	jit_info_table_find,			false,	IRMonoJitInfoPtr,			IRMonoDomainPtr, irmono_voidp								)
-	REMOTEMONO_API(	jit_info_get_code_start,		false,	irmono_voidp,				IRMonoJitInfoPtr											)
+	REMOTEMONO_API(	jit_info_get_code_start,		false,	irmono_funcp,				IRMonoJitInfoPtr											)
 	REMOTEMONO_API(	jit_info_get_code_size,			false,	irmono_int,					IRMonoJitInfoPtr											)
 	REMOTEMONO_API(	jit_info_get_method,			false,	IRMonoMethodPtr,			IRMonoJitInfoPtr											)
 
@@ -409,7 +410,7 @@ public:
 	 * @param workerThread The already created worker thread in the remote process. It does not need to be Mono-attached
 	 * 		for calling this method yet.
 	 */
-	void injectAPI(RMonoAPI* mono, blackbone::Process& process, blackbone::ThreadPtr workerThread);
+	void injectAPI(RMonoAPI* mono, backend::RMonoProcess& process);
 
 	/**
 	 * Release all resources in the remote process and detach the backend.
@@ -447,17 +448,12 @@ private:
 
 private:
 	ABI* abi;
-	blackbone::Process* process;
+	backend::RMonoProcess* process;
 	IPCVec ipcVec;
 	typename IPCVec::VectorPtr ipcVecPtr;
-	blackbone::MemBlock remDataBlock;
-	blackbone::ThreadPtr worker;
+	backend::RMonoMemBlock remDataBlock;
 	bool injected;
 	std::unordered_set<std::string> validAPIFuncNames;
-
-	//MonoAPI monoAPI;
-	//MiscAPI miscAPI;
-	//BoilerplateAPI boilerAPI;
 };
 
 

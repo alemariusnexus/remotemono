@@ -28,6 +28,7 @@
 #include "RMonoAPIFunctionWrap_Def.h"
 #include "RMonoAPIFunctionAPI_Def.h"
 #include "RMonoAPIBase_Def.h"
+#include "backend/RMonoAsmHelper.h"
 
 
 
@@ -90,7 +91,7 @@ public:
 	 * @param name The function's full name.
 	 * @param rawFuncAddr The address to the raw function in remote memory.
 	 */
-	void init(ABI* abi, RMonoAPIBase* mono, const std::string& name, blackbone::ptr_t rawFuncAddr)
+	void init(ABI* abi, RMonoAPIBase* mono, const std::string& name, rmono_funcp rawFuncAddr)
 	{
 		this->abi = abi;
 		this->mono = mono;
@@ -111,10 +112,10 @@ public:
 	/**
 	 * Compile the RMonoAPIFunctionWrap component, i.e. generate the wrapper function's assembly code.
 	 *
-	 * @param a The IAsmHelper to use for assembly generation.
+	 * @param a The RMonoAsmHelper to use for assembly generation.
 	 * @return The label to the function's start.
 	 */
-	asmjit::Label compile(blackbone::IAsmHelper& a)
+	asmjit::Label compile(backend::RMonoAsmHelper& a)
 	{
 		return this->compileWrap(a);
 	}
@@ -125,7 +126,7 @@ public:
 	 *
 	 * @param wrapFuncAddr The wrapper function's remote address.
 	 */
-	void link(blackbone::ptr_t wrapFuncAddr)
+	void link(rmono_funcp wrapFuncAddr)
 	{
 		this->linkWrap(wrapFuncAddr);
 	}

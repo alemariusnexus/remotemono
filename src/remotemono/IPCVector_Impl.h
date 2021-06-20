@@ -26,9 +26,7 @@
 #include <cstring>
 #include "util.h"
 #include "log.h"
-
-
-using namespace blackbone;
+#include "RMonoException.h"
 
 
 
@@ -55,7 +53,7 @@ template <typename ElemT, typename IntPtrT>
 typename IPCVector<ElemT, IntPtrT>::VectorPtr IPCVector<ElemT, IntPtrT>::vectorNew(uint32_t cap)
 {
 	if (process) {
-		return *remAPI->vectorNew.Call({cap}, process->remote().getWorker());
+		return remAPI->vectorNew(cap);
 	} else {
 		return localApi.vectorNew(cap);
 	}
@@ -66,7 +64,7 @@ template <typename ElemT, typename IntPtrT>
 void IPCVector<ElemT, IntPtrT>::vectorFree(VectorPtr v)
 {
 	if (process) {
-		remAPI->vectorFree.Call({v}, process->remote().getWorker());
+		remAPI->vectorFree(v);
 	} else {
 		localApi.vectorFree(v);
 	}
@@ -77,7 +75,7 @@ template <typename ElemT, typename IntPtrT>
 void IPCVector<ElemT, IntPtrT>::vectorAdd(VectorPtr v, ElemT elem)
 {
 	if (process) {
-		remAPI->vectorAdd.Call({v, elem}, process->remote().getWorker());
+		remAPI->vectorAdd(v, elem);
 	} else {
 		localApi.vectorAdd(v, elem);
 	}
@@ -88,7 +86,7 @@ template <typename ElemT, typename IntPtrT>
 void IPCVector<ElemT, IntPtrT>::vectorClear(VectorPtr v)
 {
 	if (process) {
-		remAPI->vectorClear.Call({v}, process->remote().getWorker());
+		remAPI->vectorClear(v);
 	} else {
 		localApi.vectorClear(v);
 	}
@@ -99,7 +97,7 @@ template <typename ElemT, typename IntPtrT>
 uint32_t IPCVector<ElemT, IntPtrT>::vectorLength(VectorPtr v)
 {
 	if (process) {
-		return *remAPI->vectorLength.Call({v}, process->remote().getWorker());
+		return remAPI->vectorLength(v);
 	} else {
 		return localApi.vectorLength(v);
 	}
@@ -110,7 +108,7 @@ template <typename ElemT, typename IntPtrT>
 uint32_t IPCVector<ElemT, IntPtrT>::vectorCapacity(VectorPtr v)
 {
 	if (process) {
-		return *remAPI->vectorCapacity.Call({v}, process->remote().getWorker());
+		return remAPI->vectorCapacity(v);
 	} else {
 		return localApi.vectorCapacity(v);
 	}
@@ -121,7 +119,7 @@ template <typename ElemT, typename IntPtrT>
 typename IPCVector<ElemT, IntPtrT>::DataPtr IPCVector<ElemT, IntPtrT>::vectorData(VectorPtr v)
 {
 	if (process) {
-		return *remAPI->vectorData.Call({v}, process->remote().getWorker());
+		return remAPI->vectorData(v);
 	} else {
 		return localApi.vectorData(v);
 	}
@@ -132,7 +130,7 @@ template <typename ElemT, typename IntPtrT>
 void IPCVector<ElemT, IntPtrT>::vectorGrow(VectorPtr v, uint32_t cap)
 {
 	if (process) {
-		remAPI->vectorGrow.Call({v, cap}, process->remote().getWorker());
+		remAPI->vectorGrow(v, cap);
 	} else {
 		localApi.vectorGrow(v, cap);
 	}
@@ -157,8 +155,7 @@ void IPCVector<ElemT, IntPtrT>::read(VectorPtr v, std::vector<ElemT>& out)
 	out.resize(len);
 
 	if (process) {
-		ProcessMemory& mem = process->memory();
-		mem.Read((ptr_t) vectorData(v), len*sizeof(ElemT), out.data());
+		process->readMemory(static_cast<rmono_voidp>(vectorData(v)), len*sizeof(ElemT), out.data());
 	} else {
 		memcpy(out.data(), (void*) (uintptr_t) vectorData(v), len*sizeof(ElemT));
 	}
@@ -166,7 +163,7 @@ void IPCVector<ElemT, IntPtrT>::read(VectorPtr v, std::vector<ElemT>& out)
 
 
 template <typename ElemT, typename IntPtrT>
-void IPCVector<ElemT, IntPtrT>::inject(Process* process)
+void IPCVector<ElemT, IntPtrT>::inject(backend::RMonoProcess* process)
 {
 	using namespace asmjit;
 	using namespace asmjit::host;
@@ -178,15 +175,17 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 
 	this->process = process;
 
-	ProcessModules* modules = process ? &process->modules() : nullptr;
-	ProcessMemory* mem = process ? &process->memory() : nullptr;
+	//ProcessModules* modules = process ? &process->modules() : nullptr;
+	//ProcessMemory* mem = process ? &process->memory() : nullptr;
 
 	bool x64 = (sizeof(IntPtrT) == 8);
 
 	RMonoLogVerbose("Assembling IPCVector functions for %s", x64 ? "x64" : "x86");
 
-	auto asmPtr = AsmFactory::GetAssembler(!x64);
+	auto asmPtr = process->createAssembler();
 	auto& a = *asmPtr;
+
+	assert(x64 ? (a->getArch() == asmjit::kArchX64) : (a->getArch() == asmjit::kArchX86));
 
 
 	Label lVectorGrow = a->newLabel();
@@ -198,23 +197,26 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 	Label lVectorCapacity = a->newLabel();
 	Label lVectorData = a->newLabel();
 
-	ptr_t pHeapAlloc;
-	ptr_t pHeapReAlloc;
-	ptr_t pHeapFree;
-	ptr_t pGetProcessHeap;
+	rmono_funcp pHeapAlloc;
+	rmono_funcp pHeapReAlloc;
+	rmono_funcp pHeapFree;
+	rmono_funcp pGetProcessHeap;
 
 	if (process) {
-		auto k32 = modules->GetModule(L"kernel32.dll");
+		auto k32 = process->getModule("kernel32.dll");
+		if (!k32) {
+			throw RMonoException("kernel32.dll not found in remote process");
+		}
 
-		pHeapAlloc = modules->GetExport(k32, "HeapAlloc")->procAddress;
-		pHeapReAlloc = modules->GetExport(k32, "HeapReAlloc")->procAddress;
-		pHeapFree = modules->GetExport(k32, "HeapFree")->procAddress;
-		pGetProcessHeap = modules->GetExport(k32, "GetProcessHeap")->procAddress;
+		pHeapAlloc = k32->getExport("HeapAlloc").procPtr;
+		pHeapReAlloc = k32->getExport("HeapReAlloc").procPtr;
+		pHeapFree = k32->getExport("HeapFree").procPtr;
+		pGetProcessHeap = k32->getExport("GetProcessHeap").procPtr;
 	} else {
-		pHeapAlloc = (ptr_t) &HeapAlloc;
-		pHeapReAlloc = (ptr_t) &HeapReAlloc;
-		pHeapFree = (ptr_t) &HeapFree;
-		pGetProcessHeap = (ptr_t) &GetProcessHeap;
+		pHeapAlloc = (rmono_funcp) &HeapAlloc;
+		pHeapReAlloc = (rmono_funcp) &HeapReAlloc;
+		pHeapFree = (rmono_funcp) &HeapFree;
+		pGetProcessHeap = (rmono_funcp) &GetProcessHeap;
 	}
 
 
@@ -273,7 +275,8 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 
 		// v->data = (DataPtr) HeapReAlloc(heap, 0, v->data, v->cap*sizeof(ElemT));
 		a->shl(a->zsi, static_ilog2(sizeof(ElemT)));
-		a.GenCall(pHeapReAlloc, {a->zdi, 0, ptr(a->zbx, offsetof(Vector, data), a->zbx.getSize()), a->zsi}, cc_stdcall);
+		a.genCall(pHeapReAlloc, {a->zdi, 0, ptr(a->zbx, offsetof(Vector, data), a->zbx.getSize()), a->zsi},
+				backend::CallConvStdcall);
 		a->mov(ptr(a->zbx, offsetof(Vector, data)), a->zax);
 
 		a->bind(lVectorGrowRet);
@@ -305,7 +308,7 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 		a->mov(a->zsi, a->zax);
 
 		// VectorPtr v = (VectorPtr) HeapAlloc(heap, 0, sizeof(Vector));
-		a.GenCall(pHeapAlloc, {a->zsi, 0, sizeof(Vector)}, cc_stdcall);
+		a.genCall(pHeapAlloc, {a->zsi, 0, sizeof(Vector)}, backend::CallConvStdcall);
 		a->mov(a->zbx, a->zax);
 
 		// v->len = 0;
@@ -316,7 +319,7 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 
 		// v->data = (DataPtr) HeapAlloc(heap, 0, cap * sizeof(ElemT));
 		a->shl(a->zdi, static_ilog2(sizeof(ElemT)));
-		a.GenCall(pHeapAlloc, {a->zsi, 0, a->zdi}, cc_stdcall);
+		a.genCall(pHeapAlloc, {a->zsi, 0, a->zdi}, backend::CallConvStdcall);
 		a->mov(ptr(a->zbx, offsetof(Vector, data)), a->zax);
 
 		// return v;
@@ -349,10 +352,10 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 		a->mov(a->zsi, a->zax);
 
 		// HeapFree(heap, 0, v->data);
-		a.GenCall(pHeapFree, {a->zsi, 0, ptr(a->zbx, offsetof(Vector, data), a->zbx.getSize())}, cc_stdcall);
+		a.genCall(pHeapFree, {a->zsi, 0, ptr(a->zbx, offsetof(Vector, data), a->zbx.getSize())}, backend::CallConvStdcall);
 
 		// HeapFree(heap, 0, v);
-		a.GenCall(pHeapFree, {a->zsi, 0, a->zbx}, cc_stdcall);
+		a.genCall(pHeapFree, {a->zsi, 0, a->zbx}, backend::CallConvStdcall);
 
 		a->add(a->zsp, 8);
 		a->pop(a->zsi);
@@ -428,24 +431,24 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 	}
 
 
-	ptr_t codeBaseAddr;
+	rmono_voidp codeBaseAddr;
 
 	if (process) {
-		remoteCode = std::move(mem->Allocate(a->getCodeSize()).result());
+		remoteCode = std::move(backend::RMonoMemBlock::alloc(process, a->getCodeSize()));
 
 		code = malloc(a->getCodeSize());
 		a->relocCode(code);
 
-		mem->Write(remoteCode.ptr(), a->getCodeSize(), code);
+		process->writeMemory(*remoteCode, a->getCodeSize(), code);
 
 		free(code);
 		code = nullptr;
 
-		codeBaseAddr = remoteCode.ptr();
+		codeBaseAddr = *remoteCode;
 	} else {
 		code = VirtualAlloc(NULL, a->getCodeSize(), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 		a->relocCode(code);
-		codeBaseAddr = (ptr_t) code;
+		codeBaseAddr = (rmono_voidp) code;
 	}
 
 	api.vectorNew = codeBaseAddr + a->getLabelOffset(lVectorNew);
@@ -460,15 +463,15 @@ void IPCVector<ElemT, IntPtrT>::inject(Process* process)
 
 	if (process) {
 		remAPI = new VectorRemoteAPI {
-			RemoteFunctionFastcall<VECTOR_NEW>(*process, api.vectorNew),
-			RemoteFunctionFastcall<VECTOR_FREE>(*process, api.vectorFree),
-			RemoteFunctionFastcall<VECTOR_ADD>(*process, api.vectorAdd),
-			RemoteFunctionFastcall<VECTOR_CLEAR>(*process, api.vectorClear),
-			RemoteFunctionFastcall<VECTOR_LENGTH>(*process, api.vectorLength),
-			RemoteFunctionFastcall<VECTOR_CAPACITY>(*process, api.vectorCapacity),
-			RemoteFunctionFastcall<VECTOR_DATA>(*process, api.vectorData),
+			RemoteFunctionFastcall<VECTOR_NEW>(process, api.vectorNew),
+			RemoteFunctionFastcall<VECTOR_FREE>(process, api.vectorFree),
+			RemoteFunctionFastcall<VECTOR_ADD>(process, api.vectorAdd),
+			RemoteFunctionFastcall<VECTOR_CLEAR>(process, api.vectorClear),
+			RemoteFunctionFastcall<VECTOR_LENGTH>(process, api.vectorLength),
+			RemoteFunctionFastcall<VECTOR_CAPACITY>(process, api.vectorCapacity),
+			RemoteFunctionFastcall<VECTOR_DATA>(process, api.vectorData),
 
-			RemoteFunctionFastcall<VECTOR_GROW>(*process, api.vectorGrow)
+			RemoteFunctionFastcall<VECTOR_GROW>(process, api.vectorGrow)
 		};
 	} else {
 		localApi.vectorNew = (VECTOR_NEW) api.vectorNew;
@@ -496,8 +499,7 @@ void IPCVector<ElemT, IntPtrT>::uninject()
 	if (process) {
 		delete remAPI;
 
-		remoteCode.Free();
-		remoteCode = MemBlock();
+		remoteCode.reset();
 
 		process = nullptr;
 	} else {

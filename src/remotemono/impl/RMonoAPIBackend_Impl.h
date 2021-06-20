@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include "../log.h"
 #include "../util.h"
+#include "backend/RMonoModule.h"
 
 
 
@@ -40,7 +41,7 @@ namespace remotemono
 
 template <typename ABI>
 RMonoAPIBackend<ABI>::RMonoAPIBackend(ABI* abi)
-		: abi(abi), process(nullptr), worker(nullptr), injected(false)
+		: abi(abi), process(nullptr), injected(false)
 {
 }
 
@@ -52,37 +53,29 @@ RMonoAPIBackend<ABI>::~RMonoAPIBackend()
 
 
 template <typename ABI>
-void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process, blackbone::ThreadPtr workerThread)
+void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, backend::RMonoProcess& process)
 {
-	using namespace blackbone;
-
 	if (injected) {
 		return;
 	}
 
 	this->process = &process;
-	this->worker = workerThread;
 
 	ABI* abi = getABI();
 
 	bool x64 = (sizeof(irmono_voidp) == 8);
 
-	RemoteExec& rem = process.remote();
-	ProcessMemory& mem = process.memory();
-	ProcessModules& modules = process.modules();
-
 	ipcVec.inject(&process);
 
-	ModuleDataPtr monoDll = modules.GetModule(L"mono.dll");
+	backend::RMonoModule* monoDll = process.getModule("mono.dll");
 
 	if (!monoDll) {
-		auto loadedModules = modules.GetAllModules();
+		auto loadedModules = process.getAllModules();
 
-		for (auto it = loadedModules.begin() ; it != loadedModules.end() ; it++) {
-			auto& modName = it->first.first;
-			auto& mod = it->second;
-
-			if (process.modules().GetExport(mod, "mono_get_root_domain")) {
+		//for (auto it = loadedModules.begin() ; it != loadedModules.end() ; it++) {
+		for (backend::RMonoModule* mod : loadedModules) {
+			backend::RMonoModule::Export exp;
+			if (mod->getExport(exp, "mono_get_root_domain")) {
 				monoDll = mod;
 				break;
 			}
@@ -90,7 +83,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 	}
 
 	if (monoDll) {
-		RMonoLogInfo("Found Mono Embedded API in '%ls'", monoDll->name.data());
+		RMonoLogInfo("Found Mono Embedded API in '%s'", monoDll->getName().c_str());
 	} else {
 		throw std::runtime_error("Couldn't find module containing Mono Embedded API in remote process.");
 	}
@@ -102,9 +95,9 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 	foreachAPI(*dynamic_cast<MonoAPI*>(this), [&](const char* name, auto& func) {
 		std::string exportName("mono_");
 		exportName.append(name);
-		auto res = process.modules().GetExport(monoDll, exportName.data());
-		if (res) {
-			func.init(abi, mono, exportName, res->procAddress);
+		backend::RMonoModule::Export exp;
+		if (monoDll->getExport(exp, exportName.data())) {
+			func.init(abi, mono, exportName, exp.procPtr);
 		} else {
 			RMonoLogDebug("API function not found in remote process: %s", exportName.data());
 			func.initInvalid(exportName);
@@ -115,9 +108,9 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 	});
 
 	foreachAPI(*dynamic_cast<MiscAPI*>(this), [&](const char* name, auto& func) {
-		auto res = process.modules().GetExport(monoDll, name);
-		if (res) {
-			func.init(abi, mono, name, res->procAddress);
+		backend::RMonoModule::Export exp;
+		if (monoDll->getExport(exp, name)) {
+			func.init(abi, mono, name, exp.procPtr);
 		} else {
 			RMonoLogDebug("API function not found in remote process: %s", name);
 			func.initInvalid(name);
@@ -146,7 +139,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 	std::map<std::string, APIWrapperInfo> miscAPIWrapperInfo;
 
 	{
-		auto asmPtr = AsmFactory::GetAssembler(!x64);
+		auto asmPtr = process.createAssembler();
 		auto& a = *asmPtr;
 
 		foreachAPI(*dynamic_cast<MonoAPI*>(this), [&](const char* name, auto& func) {
@@ -177,7 +170,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 	}
 
 	{
-		auto asmPtr = AsmFactory::GetAssembler(!x64);
+		auto asmPtr = process.createAssembler();
 		auto& a = *asmPtr;
 
 		foreachAPI(*dynamic_cast<MiscAPI*>(this), [&](const char* name, auto& func) {
@@ -234,15 +227,16 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 
 	// ********** ALLOCATE REMOTE DATA BLOCK **********
 
-	this->remDataBlock = std::move(mem.Allocate(monoAPIWrapperCode.size() + boilerplateCode.size(), PAGE_EXECUTE_READWRITE).result());
+	this->remDataBlock = std::move(backend::RMonoMemBlock::alloc(&process,
+			monoAPIWrapperCode.size() + boilerplateCode.size(), PAGE_EXECUTE_READWRITE));
 
 	size_t monoAPIWrapperCodeOffs = 0;
 	size_t miscAPIWrapperCodeOffs = monoAPIWrapperCodeOffs + monoAPIWrapperCode.size();
 	size_t boilerplateCodeOffs = miscAPIWrapperCodeOffs + miscAPIWrapperCode.size();
 
-	remDataBlock.Write(monoAPIWrapperCodeOffs, monoAPIWrapperCode.size(), monoAPIWrapperCode.data());
-	remDataBlock.Write(miscAPIWrapperCodeOffs, miscAPIWrapperCode.size(), miscAPIWrapperCode.data());
-	remDataBlock.Write(boilerplateCodeOffs, boilerplateCode.size(), boilerplateCode.data());
+	remDataBlock.write(monoAPIWrapperCodeOffs, monoAPIWrapperCode.size(), monoAPIWrapperCode.data());
+	remDataBlock.write(miscAPIWrapperCodeOffs, miscAPIWrapperCode.size(), miscAPIWrapperCode.data());
+	remDataBlock.write(boilerplateCodeOffs, boilerplateCode.size(), boilerplateCode.data());
 
 	RMonoLogDebug("Remote Data Block: %llu bytes", (long long unsigned) remDataBlock.size());
 
@@ -254,11 +248,11 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 		if (func) {
 			const APIWrapperInfo& info = monoAPIWrapperInfo[name];
 
-			func.link(remDataBlock.ptr() + monoAPIWrapperCodeOffs + info.offset);
+			func.link(*remDataBlock + monoAPIWrapperCodeOffs + info.offset);
 
 			if constexpr (func.needsWrapFunc()) {
 				RMonoLogDebug("Wrapper for '%s' is at %llX (size: %llu)", func.getName().data(),
-						(long long unsigned) (remDataBlock.ptr() + monoAPIWrapperCodeOffs + info.offset), (long long unsigned) info.size);
+						(long long unsigned) (*remDataBlock + monoAPIWrapperCodeOffs + info.offset), (long long unsigned) info.size);
 			} else {
 				RMonoLogVerbose("No wrapper required for '%s'", func.getName().data());
 			}
@@ -269,11 +263,11 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 		if (func) {
 			const APIWrapperInfo& info = miscAPIWrapperInfo[name];
 
-			func.link(remDataBlock.ptr() + miscAPIWrapperCodeOffs + info.offset);
+			func.link(*remDataBlock + miscAPIWrapperCodeOffs + info.offset);
 
 			if constexpr (func.needsWrapFunc()) {
 				RMonoLogDebug("Wrapper for '%s' is at %llX (size: %llu)", func.getName().data(),
-						(long long unsigned) (remDataBlock.ptr() + miscAPIWrapperCodeOffs + info.offset), (long long unsigned) info.size);
+						(long long unsigned) (*remDataBlock + miscAPIWrapperCodeOffs + info.offset), (long long unsigned) info.size);
 			} else {
 				RMonoLogVerbose("No wrapper required for '%s'", func.getName().data());
 			}
@@ -282,7 +276,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 
 	foreachAPI(*dynamic_cast<BoilerplateAPI*>(this), [&](const char* name, auto& func) {
 		if (func) {
-			func.rebuild(process, remDataBlock.ptr() + boilerplateCodeOffs + func.getAddress(), worker);
+			func.rebuild(process, *remDataBlock + boilerplateCodeOffs + func.getAddress());
 		}
 	});
 
@@ -308,14 +302,11 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, blackbone::Process& process
 template <typename ABI>
 void RMonoAPIBackend<ABI>::uninjectAPI()
 {
-	using namespace blackbone;
-
 	if (!injected) {
 		return;
 	}
 
-	remDataBlock.Free();
-	remDataBlock = MemBlock();
+	remDataBlock.reset();
 
 	ipcVec.vectorFree(ipcVecPtr);
 
@@ -347,7 +338,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 
 	RMonoLogVerbose("Assembling BoilerplateAPI functions for %s", x64 ? "x64" : "x86");
 
-	auto asmPtr = AsmFactory::GetAssembler(!x64);
+	auto asmPtr = process->createAssembler();
 	auto& a = *asmPtr;
 
 	asmjit::Label lForeachIPCVecAdapter = a->newLabel();
@@ -489,13 +480,13 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	std::string boilerplateCode((const char*) a->make(), a->getCodeSize());
 
 	if (a->isLabelBound(lForeachIPCVecAdapter)) {
-		rmono_foreach_ipcvec_adapter.rebuild(*process, (ptr_t) a->getLabelOffset(lForeachIPCVecAdapter), worker);
+		rmono_foreach_ipcvec_adapter.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lForeachIPCVecAdapter)));
 	}
 	if (a->isLabelBound(lGchandlePin)) {
-		rmono_gchandle_pin.rebuild(*process, (ptr_t) a->getLabelOffset(lGchandlePin), worker);
+		rmono_gchandle_pin.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandlePin)));
 	}
 	if (a->isLabelBound(lArraySetref)) {
-		rmono_array_setref.rebuild(*process, (ptr_t) a->getLabelOffset(lArraySetref), worker);
+		rmono_array_setref.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySetref)));
 	}
 
 	return boilerplateCode;

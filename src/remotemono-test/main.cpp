@@ -24,79 +24,29 @@
 #include <functional>
 #include <memory>
 #include <list>
-#include <locale>
-#include <codecvt>
 #include <string>
-#include <filesystem>
 #include <windows.h>
 #include <BlackBone/Process/Process.h>
 #include <remotemono/log.h>
 #include <remotemono/util.h>
 #include <remotemono/RMonoAPI.h>
+#include <remotemono/RMonoBackend.h>
+#include <remotemono/RMonoBackendBlackBone.h>
 #include <gtest/gtest.h>
 #include "CLI11.hpp"
 #include "System.h"
+#include "TestBackend.h"
 #include "TestEnvException.h"
 
 using namespace remotemono;
-namespace fs = std::filesystem;
 
-
-
-
-
-
-void AttachProcessByExecutablePath(std::string path)
-{
-	blackbone::Process& proc = System::getInstance().getProcess();
-
-	std::wstring wTargetExePath = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().from_bytes(path);
-
-	std::wstring wTargetExeDirPath = fs::path(wTargetExePath).parent_path().wstring();
-
-	NTSTATUS status = proc.CreateAndAttach(wTargetExePath.data(), false, true, L"", wTargetExeDirPath.empty() ? nullptr : wTargetExeDirPath.data());
-	if (!NT_SUCCESS(status)) {
-		throw TestEnvException("Error creating and attaching to target executable.");
-	}
-
-	Sleep(1000);
-}
-
-
-void AttachProcessByPID(DWORD pid)
-{
-	blackbone::Process& proc = System::getInstance().getProcess();
-
-	NTSTATUS status = proc.Attach(pid);
-	if (!NT_SUCCESS(status)) {
-		throw TestEnvException("Error attaching to target process.");
-	}
-}
-
-
-void AttachProcessByExecutableFilename(std::string name)
-{
-	blackbone::Process& proc = System::getInstance().getProcess();
-
-	std::wstring wTargetRunningExeName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().from_bytes(name);
-
-	auto pids = proc.EnumByName(wTargetRunningExeName);
-	if (pids.empty()) {
-		throw TestEnvException("Target process not found.");
-	} else if (pids.size() > 1) {
-		throw TestEnvException("Multiple target process candidates found.");
-	}
-
-	NTSTATUS status = proc.Attach(pids[0]);
-	if (!NT_SUCCESS(status)) {
-		throw TestEnvException("Error attaching to target process.");
-	}
-}
 
 
 
 int main(int argc, char** argv)
 {
+	System& sys = System::getInstance();
+
 	::testing::InitGoogleTest(&argc, argv);
 
 	CLI::App app("remotemono-test");
@@ -113,6 +63,18 @@ int main(int argc, char** argv)
 
 	std::string logLevelStr;
 
+	std::string backendStr;
+
+	std::string backendListStr;
+	//for (System::BackendType type : sys.getSupportedBackendTypes()) {
+	for (TestBackend* be : TestBackend::getSupportedBackends()) {
+		std::string typeID = be->getID();
+		if (!backendListStr.empty()) {
+			backendListStr.append(", ");
+		}
+		backendListStr.append(typeID);
+	}
+
 	app.add_option("-t,--target-file", targetExePath, "Path to the target executable to use for testing.");
 	app.add_option("-p,--target-pid", targetPID, "PID of the running process to use for testing.");
 	app.add_option("-T,--target-name", targetRunningExeName, "Executable file name of the running process to use for testing.");
@@ -120,6 +82,8 @@ int main(int argc, char** argv)
 	app.add_option("-A,--target-assembly", targetAssemblyPath, "Path to the Mono target assembly.");
 
 	app.add_option("-l,--log-level", logLevelStr, "The logging level. Valid values are: verbose, debug, info, warning, error, none.");
+
+	app.add_option("-B,--backend", backendStr, std::string("The backend to use. Valid values are: ").append(backendListStr).append("."));
 
 	try {
 		app.parse(argc, argv);
@@ -157,22 +121,40 @@ int main(int argc, char** argv)
 		RMonoLogger::getInstance().setLogLevel(logLevel);
 
 
-		System& sys = System::getInstance();
+		//System::BackendType backendType = System::BackendTypeInvalid;
+		TestBackend* testBackend = nullptr;
 
-		if (!targetExePath.empty()) {
-			AttachProcessByExecutablePath(targetExePath);
-			terminateTarget = true;
-		} else if (app.count("--target-pid") != 0) {
-			AttachProcessByPID(targetPID);
-		} else if (!targetRunningExeName.empty()) {
-			AttachProcessByExecutableFilename(targetRunningExeName);
+		if (backendStr.empty()) {
+			testBackend = TestBackend::getDefaultBackend();
 		} else {
-			AttachProcessByExecutablePath("remotemono-test-target.exe");
-			terminateTarget = true;
+			//for (System::BackendType type : sys.getSupportedBackendTypes()) {
+			for (TestBackend* be : TestBackend::getSupportedBackends()) {
+				std::string typeID = be->getID();
+				if (backendStr == typeID) {
+					testBackend = be;
+					break;
+				}
+			}
 		}
 
-		if (!sys.getProcess().valid()) {
-			throw TestEnvException("Unable to attach to target process.");
+		if (!testBackend) {
+			throw TestEnvException("Invalid test backend.");
+		}
+
+		sys.setTestBackend(testBackend);
+
+
+
+		if (!targetExePath.empty()) {
+			testBackend->attachProcessByExecutablePath(targetExePath);
+			terminateTarget = true;
+		} else if (app.count("--target-pid") != 0) {
+			testBackend->attachProcessByPID(targetPID);
+		} else if (!targetRunningExeName.empty()) {
+			testBackend->attachProcessByExecutableFilename(targetRunningExeName);
+		} else {
+			testBackend->attachProcessByExecutablePath("remotemono-test-target.exe");
+			terminateTarget = true;
 		}
 
 
@@ -193,7 +175,7 @@ int main(int argc, char** argv)
 		sys.detach();
 
 		if (terminateTarget) {
-			sys.getProcess().Terminate();
+			testBackend->terminateProcess();
 		}
 
 		return res;

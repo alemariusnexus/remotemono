@@ -29,8 +29,6 @@
 #include "../asmutil.h"
 #include "../log.h"
 
-using namespace blackbone;
-
 
 
 namespace remotemono
@@ -68,7 +66,7 @@ namespace remotemono
 
 
 template <typename CommonT, typename ABI, typename RetT, typename... ArgsT>
-asmjit::Label RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::compileWrap(blackbone::IAsmHelper& a)
+asmjit::Label RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::compileWrap(backend::RMonoAsmHelper& a)
 {
 	asmjit::Label label = a->newLabel();
 	a->bind(label);
@@ -101,14 +99,14 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::generateWrapperAsm(AsmB
 	using namespace asmjit;
 	using namespace asmjit::host;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	// TODO: We might want to handle exceptions differently: When an exception output parameter is set (i.e. an exception
 	// was thrown), return values and other output parameters may not actually be valid. So is it safe to handle them
 	// like we do when an exception occurs?
 
 
-	ptr_t rawFuncAddr = static_cast<CommonT*>(this)->getRawFuncAddress();
+	rmono_funcp rawFuncAddr = static_cast<CommonT*>(this)->getRawFuncAddress();
 
 
 	Label& lFuncRet = a->newLabel();
@@ -287,7 +285,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperSpillArgsToSt
 
 	typedef typename RMonoAPIFunctionWrapTraits<CommonT>::WrapArgsTuple WrapArgsTuple;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	if constexpr (
 				wrapArgIdx < 4
@@ -316,7 +314,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperReserveStack(
 	using namespace asmjit;
 	using namespace asmjit::host;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	if constexpr(std::is_base_of_v<Variant, typename RetT::Type>) {
 		if constexpr(sizeof...(ArgsT) != 0) {
@@ -348,7 +346,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperReserveArgSta
 	using namespace asmjit;
 	using namespace asmjit::host;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	// IMPORTANT: Always allocate stack space in multiples of sizeof(RemotePtrT) to ensure that values are aligned to
 	// the pointer size. See comment at dynamic stack allocation above for why that's necessary.
@@ -474,7 +472,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 	using namespace asmjit;
 	using namespace asmjit::host;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	if constexpr(std::is_base_of_v<Variant, typename ArgT::Type>) {
 		Label lBuildEnd = a->newLabel();
@@ -812,7 +810,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperMoveStackArgs
 
 	typedef typename RMonoAPIFunctionRawTraits<CommonT>::RawArgsTuple RawArgsTuple;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	assert(ctx.x64);
 
@@ -843,7 +841,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleRetAndO
 	using namespace asmjit;
 	using namespace asmjit::host;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	if constexpr(std::is_base_of_v<Variant, typename RetT::Type>) {
 		Label lHandleEnd = a->newLabel();
@@ -971,7 +969,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 	using namespace asmjit;
 	using namespace asmjit::host;
 
-	IAsmHelper& a = *ctx.a;
+	backend::RMonoAsmHelper& a = *ctx.a;
 
 	if constexpr(std::is_base_of_v<Variant, typename ArgT::Type>) {
 		Label lHandleEnd = a->newLabel();

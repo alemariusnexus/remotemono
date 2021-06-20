@@ -45,7 +45,7 @@ namespace remotemono
 
 
 
-RMonoAPI::RMonoAPI(blackbone::Process& process)
+RMonoAPI::RMonoAPI(backend::RMonoProcess& process)
 		: RMonoAPIBase(process), attached(false)
 {
 }
@@ -70,16 +70,15 @@ void RMonoAPI::attach()
 		versionPrinted = true;
 	}
 
-	RemoteExec& rem = process.remote();
+	RMonoLogInfo("Using backend: %s", process.getBackend()->getName().c_str());
 
-	rem.CreateRPCEnvironment(Worker_CreateNew, true);
 
-	worker = rem.getWorker();
+	process.attach();
 
 	selectABI();
 
 	apid->apply([&](auto& e) {
-		e.api.injectAPI(this, process, worker);
+		e.api.injectAPI(this, process);
 	});
 
 	attached = true;
@@ -147,19 +146,13 @@ void RMonoAPI::selectABI()
 	SYSTEM_INFO sysinfo;
     GetNativeSystemInfo(&sysinfo);
 
-    bool x64;
-
-    if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
-    	x64 = false;
-    } else {
-    	x64 = !process.core().isWow64();
-    }
+    backend::RMonoProcessorArch arch = process.getProcessorArchitecture();
 
 	apid->foreach([&](auto& e) {
 		typedef decltype(e.abi) ABI;
-		if (x64  &&  sizeof(typename ABI::irmono_voidp) == 8) {
+		if (arch == backend::ProcessorArchX86_64  &&  sizeof(typename ABI::irmono_voidp) == 8) {
 			apid->selectABI<ABI>();
-		} else if (!x64  &&  sizeof(typename ABI::irmono_voidp) == 4) {
+		} else if (arch == backend::ProcessorArchX86  &&  sizeof(typename ABI::irmono_voidp) == 4) {
 			apid->selectABI<ABI>();
 		}
 	});
@@ -173,11 +166,12 @@ void RMonoAPI::selectABI()
 
 
 template <typename ABI>
-blackbone::MemBlock RMonoAPI::prepareIterator()
+backend::RMonoMemBlock RMonoAPI::prepareIterator()
 {
-	blackbone::MemBlock rIter = std::move(process.memory().Allocate(sizeof(typename ABI::irmono_voidp), PAGE_READWRITE).result());
+	backend::RMonoMemBlock rIter = std::move(backend::RMonoMemBlock::alloc(&process,
+			sizeof(typename ABI::irmono_voidp), PAGE_READWRITE));
 	typename ABI::irmono_voidp nullPtr = 0;
-	rIter.Write(0, sizeof(typename ABI::irmono_voidp), &nullPtr);
+	rIter.write(0, sizeof(typename ABI::irmono_voidp), &nullPtr);
 	return std::move(rIter);
 }
 
@@ -454,10 +448,10 @@ RMonoAssemblyNamePtr RMonoAPI::assemblyNameNew(const std::string_view& name)
 		if (e.api.assembly_name_new) {
 			return e.abi.i2p_RMonoAssemblyNamePtr(e.api.assembly_name_new(name));
 		} else if (e.api.assembly_name_parse) {
-			blackbone::MemBlock block = std::move(process.memory().Allocate(256, PAGE_READWRITE, 0, false).result());
-			RMonoAssemblyNamePtr aname((RMonoAssemblyNamePtrRaw) block.ptr(), this, true);
+			backend::RMonoMemBlock block = std::move(backend::RMonoMemBlock::alloc(&process, 256, PAGE_READWRITE, false));
+			RMonoAssemblyNamePtr aname((RMonoAssemblyNamePtrRaw) *block, this, true);
 			if (!assemblyNameParse(name, aname)) {
-				block.Free();
+				block.free();
 				return RMonoAssemblyNamePtr();
 			}
 			return aname;
@@ -647,7 +641,7 @@ rmono_voidp RMonoAPI::metadataGuidHeap(RMonoImagePtr image, uint32_t idx, uint8_
 	});
 
 	if (outGuid) {
-		process.memory().Read((blackbone::ptr_t) p, 16, outGuid);
+		process.readMemory(p, 16, outGuid);
 	}
 
 	return p;
@@ -1045,8 +1039,8 @@ std::vector<RMonoClassFieldPtr> RMonoAPI::classGetFields(RMonoClassPtr cls)
 	apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
 
-		blackbone::MemBlock rIter = prepareIterator<ABI>();
-		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) rIter.ptr();
+		backend::RMonoMemBlock rIter = prepareIterator<ABI>();
+		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) *rIter;
 
 		typename ABI::IRMonoClassFieldPtr field;
 		typename ABI::IRMonoClassPtr icls = e.abi.p2i_RMonoClassPtr(cls);
@@ -1074,8 +1068,8 @@ std::vector<RMonoMethodPtr> RMonoAPI::classGetMethods(RMonoClassPtr cls)
 	apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
 
-		blackbone::MemBlock rIter = prepareIterator<ABI>();
-		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) rIter.ptr();
+		backend::RMonoMemBlock rIter = prepareIterator<ABI>();
+		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) *rIter;
 
 		typename ABI::IRMonoMethodPtr method;
 		typename ABI::IRMonoClassPtr icls = e.abi.p2i_RMonoClassPtr(cls);
@@ -1103,8 +1097,8 @@ std::vector<RMonoPropertyPtr> RMonoAPI::classGetProperties(RMonoClassPtr cls)
 	apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
 
-		blackbone::MemBlock rIter = prepareIterator<ABI>();
-		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) rIter.ptr();
+		backend::RMonoMemBlock rIter = prepareIterator<ABI>();
+		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) *rIter;
 
 		typename ABI::IRMonoPropertyPtr prop;
 		typename ABI::IRMonoClassPtr icls = e.abi.p2i_RMonoClassPtr(cls);
@@ -1650,14 +1644,14 @@ RMonoMethodHeaderPtr RMonoAPI::methodGetHeader(RMonoMethodPtr method)
 }
 
 
-rmono_voidp RMonoAPI::methodHeaderGetCode(RMonoMethodHeaderPtr header, uint32_t* codeSize, uint32_t* maxStack)
+rmono_funcp RMonoAPI::methodHeaderGetCode(RMonoMethodHeaderPtr header, uint32_t* codeSize, uint32_t* maxStack)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(method_header_get_code);
 	if (!header) throw RMonoException("Invalid method header");
 
 	return apid->apply([&](auto& e) {
-		return e.abi.i2p_rmono_voidp(e.api.method_header_get_code(e.abi.p2i_RMonoMethodHeaderPtr(header), codeSize, maxStack));
+		return e.abi.i2p_rmono_funcp(e.api.method_header_get_code(e.abi.p2i_RMonoMethodHeaderPtr(header), codeSize, maxStack));
 	});
 }
 
@@ -1892,8 +1886,8 @@ std::vector<RMonoTypePtr> RMonoAPI::signatureGetParams(RMonoMethodSignaturePtr s
 	apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
 
-		blackbone::MemBlock rIter = prepareIterator<ABI>();
-		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) rIter.ptr();
+		backend::RMonoMemBlock rIter = prepareIterator<ABI>();
+		typename ABI::irmono_voidpp iptr = (typename ABI::irmono_voidpp) *rIter;
 
 		typename ABI::IRMonoTypePtr param;
 		typename ABI::IRMonoMethodSignaturePtr isig = e.abi.p2i_RMonoMethodSignaturePtr(sig);
@@ -2291,18 +2285,18 @@ RMonoArrayPtr RMonoAPI::arrayNewFull (
 			}
 		}
 
-		blackbone::MemBlock block = std::move(process.memory().Allocate(blockSize, PAGE_READWRITE).result());
-		block.Write(0, blockSize, data);
+		backend::RMonoMemBlock block = std::move(backend::RMonoMemBlock::alloc(&process, blockSize, PAGE_READWRITE));
+		block.write(0, blockSize, data);
 
 		delete[] data;
 
-		irmono_voidp lengthsPtr = irmono_voidp(block.ptr());
+		irmono_voidp lengthsPtr = irmono_voidp(*block);
 		irmono_voidp lowerBoundsPtr = lowerBounds.empty() ? 0 : irmono_voidp(lengthsPtr + lengths.size()*sizeof(irmono_voidp));
 
 		RMonoArrayPtr arr = e.abi.i2p_RMonoArrayPtr(e.api.array_new_full(e.abi.p2i_RMonoDomainPtr(domain), e.abi.p2i_RMonoClassPtr(cls),
 				lengthsPtr, lowerBoundsPtr));
 
-		block.Free();
+		block.free();
 
 		return arr;
 	});
@@ -2443,8 +2437,8 @@ void RMonoAPI::arraySet(RMonoArrayPtr arr, rmono_uintptr_t idx, const RMonoVaria
 			rmono_int size = (rmono_int) arrayElementSize(arrCls);
 			rmono_voidp p = arrayAddrWithSize(arr, size, idx);
 			char* data = new char[size];
-			process.memory().Read((blackbone::ptr_t) val.getRawPtr(), size, data);
-			process.memory().Write((blackbone::ptr_t) p, size, data);
+			process.readMemory(val.getRawPtr(), size, data);
+			process.writeMemory(p, size, data);
 			delete[] data;
 		} else {
 			size_t align;
@@ -2452,7 +2446,7 @@ void RMonoAPI::arraySet(RMonoArrayPtr arr, rmono_uintptr_t idx, const RMonoVaria
 			rmono_voidp p = arrayAddrWithSize(arr, size, idx);
 			char* data = new char[size];
 			val.copyForRemoteMemory(e.abi, data);
-			process.memory().Write((blackbone::ptr_t) p, size, data);
+			process.writeMemory(p, size, data);
 			delete[] data;
 		}
 	});
@@ -2588,14 +2582,14 @@ RMonoObjectPtr RMonoAPI::runtimeInvoke(RMonoMethodPtr method, const RMonoVariant
 
 
 
-rmono_voidp RMonoAPI::compileMethod(RMonoMethodPtr method)
+rmono_funcp RMonoAPI::compileMethod(RMonoMethodPtr method)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(compile_method);
 	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
-		return e.abi.i2p_rmono_voidp(e.api.compile_method(e.abi.p2i_RMonoMethodPtr(method)));
+		return e.abi.i2p_rmono_funcp(e.api.compile_method(e.abi.p2i_RMonoMethodPtr(method)));
 	});
 }
 
@@ -2619,14 +2613,14 @@ RMonoJitInfoPtr RMonoAPI::jitInfoTableFind(rmono_voidp addr)
 }
 
 
-rmono_voidp RMonoAPI::jitInfoGetCodeStart(RMonoJitInfoPtr jinfo)
+rmono_funcp RMonoAPI::jitInfoGetCodeStart(RMonoJitInfoPtr jinfo)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(jit_info_get_code_start);
 	if (!jinfo) throw RMonoException("Invalid jit info");
 
 	return apid->apply([&](auto& e) {
-		return e.abi.i2p_rmono_voidp(e.api.jit_info_get_code_start(e.abi.p2i_RMonoJitInfoPtr(jinfo)));
+		return e.abi.i2p_rmono_funcp(e.api.jit_info_get_code_start(e.abi.p2i_RMonoJitInfoPtr(jinfo)));
 	});
 }
 

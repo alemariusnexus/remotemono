@@ -23,12 +23,13 @@
 
 #include <string>
 #include <string_view>
-#include <BlackBone/Process/Process.h>
 #include "RMonoAPIBase_Def.h"
 #include "RMonoTypes.h"
 #include "RMonoHandle_Def.h"
 #include "RMonoVariant_Def.h"
 #include "RMonoVariantArray_Def.h"
+#include "backend/RMonoProcess.h"
+#include "backend/RMonoMemBlock.h"
 #include "exception/RMonoException_Def.h"
 #include "exception/RMonoUnsupportedAPIException_Def.h"
 
@@ -64,7 +65,7 @@ public:
 	 * Create a new RMonoAPI for the given remote process. Note that this function **does not attach** to the remote.
 	 * You need to call attach() afterwards before using the Mono API functions.
 	 */
-	inline RMonoAPI(blackbone::Process& process);
+	inline RMonoAPI(backend::RMonoProcess& process);
 
 	/**
 	 * Destroy the RMonoAPI, automatically calling detach() if it was attached before.
@@ -262,7 +263,7 @@ public:
 	inline uint32_t							methodGetFlags(RMonoMethodPtr method, uint32_t* iflags = nullptr);
 	inline RMonoMethodSignaturePtr			methodSignature(RMonoMethodPtr method);
 	inline RMonoMethodHeaderPtr				methodGetHeader(RMonoMethodPtr method);
-	inline rmono_voidp						methodHeaderGetCode(RMonoMethodHeaderPtr header, uint32_t* codeSize, uint32_t* maxStack);
+	inline rmono_funcp						methodHeaderGetCode(RMonoMethodHeaderPtr header, uint32_t* codeSize, uint32_t* maxStack);
 	inline RMonoMethodDescPtr				methodDescNew(const std::string_view& name, bool includeNamespace);
 	inline void								methodDescFree(RMonoMethodDescPtrRaw desc);
 	inline bool								methodDescMatch(RMonoMethodDescPtr desc, RMonoMethodPtr method);
@@ -274,7 +275,7 @@ public:
 															RMonoVariantArray& params, bool catchExceptions = true);
 	inline RMonoObjectPtr					runtimeInvoke (	RMonoMethodPtr method, const RMonoVariant& obj = nullptr,
 															RMonoVariantArray&& params = RMonoVariantArray(), bool catchExceptions = true);
-	inline rmono_voidp						compileMethod(RMonoMethodPtr method);
+	inline rmono_funcp						compileMethod(RMonoMethodPtr method);
 	///@}
 
 	///@name Mono API - Properties
@@ -375,7 +376,7 @@ public:
 	///@{
 	inline RMonoJitInfoPtr					jitInfoTableFind(RMonoDomainPtr domain, rmono_voidp addr);
 	inline RMonoJitInfoPtr					jitInfoTableFind(rmono_voidp addr);
-	inline rmono_voidp						jitInfoGetCodeStart(RMonoJitInfoPtr jinfo);
+	inline rmono_funcp						jitInfoGetCodeStart(RMonoJitInfoPtr jinfo);
 	inline int32_t							jitInfoGetCodeSize(RMonoJitInfoPtr jinfo);
 	inline RMonoMethodPtr					jitInfoGetMethod(RMonoJitInfoPtr jinfo);
 	///@}
@@ -444,7 +445,7 @@ private:
 	inline void selectABI();
 
 	template <typename ABI>
-	blackbone::MemBlock prepareIterator();
+	backend::RMonoMemBlock prepareIterator();
 
 	inline void checkAttached();
 

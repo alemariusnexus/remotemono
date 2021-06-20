@@ -22,9 +22,9 @@
 #include "config.h"
 
 #include <stdint.h>
-#include <BlackBone/Patterns/PatternSearch.h>
-#include <BlackBone/Process/Process.h>
-#include <BlackBone/Process/RPC/RemoteFunction.hpp>
+#include "impl/backend/RMonoProcess.h"
+#include "impl/backend/RMonoMemBlock.h"
+#include "impl/backend/RMonoRPCFunc.h"
 
 
 
@@ -32,24 +32,16 @@ namespace remotemono
 {
 
 
-// NOTE: We need these classes to specify the calling convention explicitly. blackbone::RemoteFunction gets it from
-// the function signature, but for x64 locals, function pointer types that differ only in the calling convention (e.g.
-// the __fastcall prefix) are indistinguishable (all aliases for Microsoft's x64 calling convention), so BlackBone will
-// always detect them as __cdecl, even when defined as __fastcall. This is a problem with x86 remotes, where these
-// calling conventions still make a difference.
 template<typename Fn>
 class RemoteFunctionFastcall;
 
-template<typename R, typename... Args>
-class RemoteFunctionFastcall<R ( __fastcall* )(Args...)> : public blackbone::RemoteFunctionBase<blackbone::cc_fastcall, R, Args...>
+template <typename R, typename... Args>
+class RemoteFunctionFastcall<R (__fastcall*)(Args...)> : public backend::RMonoRPCFunc<backend::CallConvFastcall, R, Args...>
 {
 public:
-    using RemoteFunctionBase::RemoteFunctionBase;
+	using RMonoRPCFunc::RMonoRPCFunc;
 
-    RemoteFunctionFastcall( blackbone::Process& proc, R( __fastcall* ptr )(Args...), blackbone::ThreadPtr boundThread = nullptr )
-        : blackbone::RemoteFunctionBase( proc, reinterpret_cast<ptr_t>(ptr), boundThread )
-    {
-    }
+	RemoteFunctionFastcall(backend::RMonoProcess* process, rmono_funcp fptr) : RMonoRPCFunc(process, fptr) {}
 };
 
 
@@ -81,15 +73,15 @@ public:
 
 	struct VectorAPI
 	{
-		blackbone::ptr_t vectorNew;
-		blackbone::ptr_t vectorFree;
-		blackbone::ptr_t vectorAdd;
-		blackbone::ptr_t vectorClear;
-		blackbone::ptr_t vectorLength;
-		blackbone::ptr_t vectorCapacity;
-		blackbone::ptr_t vectorData;
+		rmono_funcp vectorNew;
+		rmono_funcp vectorFree;
+		rmono_funcp vectorAdd;
+		rmono_funcp vectorClear;
+		rmono_funcp vectorLength;
+		rmono_funcp vectorCapacity;
+		rmono_funcp vectorData;
 
-		blackbone::ptr_t vectorGrow;
+		rmono_funcp vectorGrow;
 	};
 	struct VectorLocalAPI
 	{
@@ -128,7 +120,7 @@ public:
 	IPCVector();
 	virtual ~IPCVector();
 
-	void inject(blackbone::Process* process);
+	void inject(backend::RMonoProcess* process);
 	void uninject();
 
 	VectorAPI& getAPI() { return api; }
@@ -147,12 +139,12 @@ public:
 	void read(VectorPtr v, std::vector<ElemT>& out);
 
 private:
-	blackbone::Process* process;
+	backend::RMonoProcess* process;
 	bool injected;
 	VectorAPI api;
 	VectorLocalAPI localApi;
 	VectorRemoteAPI* remAPI;
-	blackbone::MemBlock remoteCode;
+	backend::RMonoMemBlock remoteCode;
 	void* code;
 };
 

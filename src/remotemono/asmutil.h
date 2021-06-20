@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include <BlackBone/Process/Process.h>
 #include "impl/RMonoTypes.h"
+#include "impl/backend/RMonoAsmHelper.h"
 
 
 
@@ -38,11 +38,11 @@ namespace remotemono
  * Note that this always expects the GC handle in ZCX and returns the result in ZAX. You do not need to reserve
  * any shadow stack space before calling this function.
  *
- * @param a The IAsmHelper used to generate the code.
+ * @param a The RMonoAsmHelper used to generate the code.
  * @param rawAddr The address to the raw mono_gchandle_get_target() function.
  * @param x64 true to generate x64 code, false for x86
  */
-inline void AsmGenGchandleGetTargetChecked(blackbone::IAsmHelper& a, blackbone::ptr_t rawAddr, bool x64)
+inline void AsmGenGchandleGetTargetChecked(backend::RMonoAsmHelper& a, rmono_funcp rawAddr, bool x64)
 {
 	// NOTE: Always expects an irmono_gchandle in zcx.
 
@@ -86,11 +86,11 @@ inline void AsmGenGchandleGetTargetChecked(blackbone::IAsmHelper& a, blackbone::
  * Also note that this always creates non-pinned GC handles, and this (pseudo-)function takes only a single
  * parameter: the raw pointer itself.
  *
- * @param a The IAsmHelper used to generate the code.
+ * @param a The RMonoAsmHelper used to generate the code.
  * @param rawAddr The address to the raw mono_gchandle_new() function.
  * @param x64 true to generate x64 code, false for x86
  */
-inline void AsmGenGchandleNewChecked(blackbone::IAsmHelper& a, blackbone::ptr_t rawAddr, bool x64)
+inline void AsmGenGchandleNewChecked(backend::RMonoAsmHelper& a, rmono_funcp rawAddr, bool x64)
 {
 	// NOTE: Always expects an IRMonoObjectPtrRaw in zcx.
 
@@ -127,9 +127,9 @@ inline void AsmGenGchandleNewChecked(blackbone::IAsmHelper& a, blackbone::ptr_t 
 
 
 inline void AsmGenIsValueTypeInstance (
-		blackbone::IAsmHelper& a,
-		blackbone::ptr_t objectGetClassAddr,
-		blackbone::ptr_t classIsValuetypeAddr,
+		backend::RMonoAsmHelper& a,
+		rmono_funcp objectGetClassAddr,
+		rmono_funcp classIsValuetypeAddr,
 		bool x64
 ) {
 	// bool is_value_type_instance(IRMonoObjectPtrRaw obj)
@@ -172,8 +172,8 @@ inline void AsmGenIsValueTypeInstance (
 
 
 inline void AsmGenObjectUnbox (
-		blackbone::IAsmHelper& a,
-		blackbone::ptr_t objectUnboxAddr,
+		backend::RMonoAsmHelper& a,
+		rmono_funcp objectUnboxAddr,
 		bool x64
 ) {
 	// void* object_unbox(IRMonoObjectPtrRaw obj)

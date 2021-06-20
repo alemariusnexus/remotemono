@@ -17,6 +17,4 @@
 	along with RemoteMono.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
-
-#include <remotemono/config.h>
+#include <samples/redrunner/config_generated.h>
