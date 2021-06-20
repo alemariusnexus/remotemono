@@ -1,5 +1,5 @@
 /*
-	Copyright 2020 David "Alemarius Nexus" Lerch
+	Copyright 2020-2021 David "Alemarius Nexus" Lerch
 
 	This file is part of RemoteMono.
 

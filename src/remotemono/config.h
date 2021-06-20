@@ -1,5 +1,5 @@
 /*
-	Copyright 2020 David "Alemarius Nexus" Lerch
+	Copyright 2020-2021 David "Alemarius Nexus" Lerch
 
 	This file is part of RemoteMono.
 
@@ -47,7 +47,7 @@
 
 
 #define REMOTEMONO_VERSION_MAJOR 0
-#define REMOTEMONO_VERSION_MINOR 1
+#define REMOTEMONO_VERSION_MINOR 2
 #define REMOTEMONO_VERSION_PATCH 0
 
 #define REMOTEMONO_VERSION ((REMOTEMONO_VERSION_MAJOR << 24) | (REMOTEMONO_VERSION_MINOR << 16) | (REMOTEMONO_VERSION_PATCH))
