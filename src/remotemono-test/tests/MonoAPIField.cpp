@@ -166,8 +166,6 @@ TEST(MonoAPIFieldTest, FieldValueValueType)
 {
 	RMonoAPI& mono = System::getInstance().getMono();
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 1");
-
 	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
 	auto img = mono.assemblyGetImage(ass);
 
@@ -194,49 +192,29 @@ TEST(MonoAPIFieldTest, FieldValueValueType)
 	ASSERT_TRUE(intField);
 	ASSERT_TRUE(staticIntField);
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 2");
-
 	EXPECT_EQ(mono.fieldStaticGetValue<int32_t>(vtable, staticIntField), int32_t(64));
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 3");
-
 	uint32_t instSize = mono.classInstanceSize(cls);
-
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 4");
 
 	char* instData = new char[instSize];
 	mono.fieldStaticGetValue(vtable, instanceField, RMonoVariant(instData, instSize, true));
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 5");
-
 	auto obj = mono.valueBox(mono.domainGet(), cls, RMonoVariant(instData, instSize));
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 6");
-
 	mono.fieldSetValue(obj, stringField, mono.stringNew(mono.domainGet(), "Just a simple test string"));
-
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 7");
 
 	auto str = mono.fieldGetValue<RMonoStringPtr>(obj, stringField);
 	EXPECT_EQ(mono.stringToUTF8(str), std::string("Just a simple test string"));
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 8");
-
 	mono.fieldSetValue(obj, intField, 15589);
 	EXPECT_EQ(mono.fieldGetValue<int32_t>(obj, intField), 15589);
-
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 9");
 
 	auto p1 = mono.objectNew(mono.domainGet(), pointCls);
 
 	mono.runtimeInvoke(mono.classGetMethodFromName(pointCls, ".ctor", 2), p1, {555.1f, 317.9f});
 
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 10");
-
 	EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p1, mono.classGetFieldFromName(pointCls, "x")), 555.1f);
 	EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p1, mono.classGetFieldFromName(pointCls, "y")), 317.9f);
-
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 11");
 
 	{
 		// Set and get value type field by raw pointer
@@ -244,18 +222,12 @@ TEST(MonoAPIFieldTest, FieldValueValueType)
 		auto p2 = mono.objectNew(mono.domainGet(), pointCls);
 		mono.runtimeInvoke(mono.classGetMethodFromName(pointCls, ".ctor", 2), p2, {1.0f, 2.0f});
 
-		RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 12");
-
 		mono.fieldSetValue(obj, pointField, mono.objectUnboxRaw(p1));
 		mono.fieldGetValue(obj, pointField, mono.objectUnboxRaw(p2));
-
-		RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 13");
 
 		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p2, mono.classGetFieldFromName(pointCls, "x")), 555.1f);
 		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p2, mono.classGetFieldFromName(pointCls, "y")), 317.9f);
 	}
-
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 14");
 
 	{
 		// Set and get value type field by boxed object (auto-unboxing in wrapper function)
@@ -263,18 +235,12 @@ TEST(MonoAPIFieldTest, FieldValueValueType)
 		auto p2 = mono.objectNew(mono.domainGet(), pointCls);
 		mono.runtimeInvoke(mono.classGetMethodFromName(pointCls, ".ctor", 2), p2, {1.0f, 2.0f});
 
-		RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 15");
-
 		mono.fieldSetValue(obj, pointField, p1);
 		mono.fieldGetValue(obj, pointField, p2);
-
-		RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 16");
 
 		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p2, mono.classGetFieldFromName(pointCls, "x")), 555.1f);
 		EXPECT_FLOAT_EQ(mono.fieldGetValue<float>(p2, mono.classGetFieldFromName(pointCls, "y")), 317.9f);
 	}
-
-	RMonoLogDebug("MonoAPIFieldTest.FieldValueValueType - Test 17");
 
 	// TODO: More tests here, e.g. with RMonoVariant::TypeCustomValueCopy.
 }
