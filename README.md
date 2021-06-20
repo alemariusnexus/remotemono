@@ -33,9 +33,9 @@ You don't need to build RemoteMono itself, but there are a few things to keep in
 
 * Make sure to enable C++17 (`/std:c++17` in Visual Studio)
 * With Visual Studio, you need to compile with the `/bigobj` option, because apparently RemoteMono uses too many template functions/methods to fit into a normal object file...
-* Do not try to include any headers in the `impl` directories directly, it will blow up in your face. You should only have to include the headers in `remotemono`. You *can* however include the ones in `remotemono/impl/mono`.
+* **Do not try to include any headers in the `impl` directories directly**, it will blow up in your face. You should only have to include the headers in `remotemono`. You *can* however include the ones in `remotemono/impl/mono`.
 
-For BlackBone (and other dependencies), I **strongly** recommend you compile them from source yourself. You can currently find prebuilt dependencies in the GitHub releases page, but they might not work for you, and I might be too lazy to update them.
+For BlackBone (and other dependencies), I **strongly** recommend you compile them from source yourself. ~~You can currently find prebuilt dependencies in the GitHub releases page, but they might not work for you, and I might be too lazy to update them.~~ Currently, you **should not use the prebuilt dependencies** in the GitHub releases page. They contain a BlackBone version that was compiled with a "fix" that actually causes very sporadic crashes of the remote program. Maybe I'll update them one day, but don't hold your breath.
 
 How do you use it?
 ------------------
@@ -84,7 +84,7 @@ There are a few things you have to be aware of before deciding to give RemoteMon
 * RemoteMono can **only support API functions that are exported** in the remote process. Sometimes a remote process may use an older version of Mono that doesn't support certain functions, or functions may be missing for other reasons. In many such cases, RemoteMono can usually still be used, but you can't use those specific functions.
 * RemoteMono is **not very resilient to programming errors**. If you pass a wrong pointer, a null value where one shouldn't be, or some other wrong value, either your local process or the remote process (or both at once) will crash, and debugging can be hard sometimes. This **will** happen to you. This is memory hacking, so I hope you're used to it.
 * Because it's a heavily template-based header-only library, your own source files may take quite a while to compile if they include a RemoteMono header. For this reason, **it's very important to use precompiled headers** if you don't want to wait an eternity.
-* When using BlackBone without changes, RemoteMono's RPC calls are **very slow**, meaning <100 per second. This is [an issue with BlackBone](https://github.com/DarthTon/Blackbone/issues/430), and it may be fixable by simply commenting out a single line in the BlackBone source code (see the referenced issue), which boosts this by a factor of ~100. I don't know if that is safe to do, but I did apply this change in the prebuilt dependency package and RemoteMono's unit tests and sample program seem to work just fine with it. We'll see when stuff starts breaking...
+* When using BlackBone without changes, RemoteMono's RPC calls are **very slow**, meaning <100 per second. This is [an issue with BlackBone](https://github.com/DarthTon/Blackbone/issues/430), and it's fixed by a pending pull request (referenced in that issue), which boosts this by a factor of ~100. Until that is merged, you can use [my fork of BlackBone](https://github.com/alemariusnexus/Blackbone) instead if you require higher RPC throughput.
 
 How does it work?
 -----------------
