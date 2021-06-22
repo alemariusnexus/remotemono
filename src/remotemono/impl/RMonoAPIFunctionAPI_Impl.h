@@ -297,7 +297,7 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStep (
 						size*sizeof(typename RetT::Type::value_type), str.data());
 
 				if constexpr(tags::has_return_tag_v<RetT, tags::ReturnOwnTag>) {
-					mono->free(abi->i2p_rmono_voidp(*wrapRetval));
+					mono->freeLater(abi->i2p_rmono_voidp(*wrapRetval));
 				}
 
 				*apiRetval = std::move(str);

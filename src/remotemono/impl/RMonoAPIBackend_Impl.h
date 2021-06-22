@@ -23,6 +23,7 @@
 
 #include "RMonoAPIBackend_Def.h"
 
+#include <algorithm>
 #include <exception>
 #include <map>
 #include <cstddef>
@@ -41,7 +42,9 @@ namespace remotemono
 
 template <typename ABI>
 RMonoAPIBackend<ABI>::RMonoAPIBackend(ABI* abi)
-		: abi(abi), process(nullptr), injected(false)
+		: abi(abi), process(nullptr), injected(false), gchandleFreeBufCount(0), rawFreeBufCount(0),
+		  gchandleFreeBufCountMax(REMOTEMONO_GCHANDLE_FREE_BUF_SIZE_MAX),
+		  rawFreeBufCountMax(REMOTEMONO_RAW_FREE_BUF_SIZE_MAX)
 {
 }
 
@@ -306,6 +309,9 @@ void RMonoAPIBackend<ABI>::uninjectAPI()
 		return;
 	}
 
+	flushGchandleFreeBuffer();
+	flushRawFreeBuffer();
+
 	remDataBlock.reset();
 
 	ipcVec.vectorFree(ipcVecPtr);
@@ -327,6 +333,134 @@ void RMonoAPIBackend<ABI>::uninjectAPI()
 
 
 template <typename ABI>
+void RMonoAPIBackend<ABI>::setGchandleFreeBufferMaxCount(uint32_t maxCount)
+{
+	maxCount = (std::max)(maxCount, (uint32_t) 1);
+	maxCount = (std::min)(maxCount, (uint32_t) REMOTEMONO_GCHANDLE_FREE_BUF_SIZE_MAX);
+
+	if (maxCount >= gchandleFreeBufCountMax) {
+		flushGchandleFreeBuffer();
+	}
+
+	gchandleFreeBufCountMax = maxCount;
+
+	assert(gchandleFreeBufCountMax <= REMOTEMONO_GCHANDLE_FREE_BUF_SIZE_MAX);
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::setRawFreeBufferMaxCount(uint32_t maxCount)
+{
+	maxCount = (std::max)(maxCount, (uint32_t) 1);
+	maxCount = (std::min)(maxCount, (uint32_t) REMOTEMONO_RAW_FREE_BUF_SIZE_MAX);
+
+	if (maxCount >= rawFreeBufCountMax) {
+		flushRawFreeBuffer();
+	}
+
+	rawFreeBufCountMax = maxCount;
+
+	assert(rawFreeBufCountMax <= REMOTEMONO_RAW_FREE_BUF_SIZE_MAX);
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::setFreeBufferMaxCount(uint32_t maxCount)
+{
+	setGchandleFreeBufferMaxCount(maxCount);
+	setRawFreeBufferMaxCount(maxCount);
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::freeLaterGchandle(irmono_gchandle handle)
+{
+	assert(gchandleFreeBufCountMax >= 1);
+	assert(gchandleFreeBufCount < gchandleFreeBufCountMax);
+
+	gchandleFreeBuf[gchandleFreeBufCount++] = handle;
+
+	if (gchandleFreeBufCount == gchandleFreeBufCountMax) {
+		flushGchandleFreeBuffer();
+	}
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::freeLaterRaw(irmono_voidp ptr)
+{
+	assert(rawFreeBufCountMax >= 1);
+	assert(rawFreeBufCount < rawFreeBufCountMax);
+
+	rawFreeBuf[rawFreeBufCount++] = ptr;
+
+	if (rawFreeBufCount == rawFreeBufCountMax) {
+		flushRawFreeBuffer();
+	}
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::flushGchandleFreeBuffer()
+{
+	if (gchandleFreeBufCount == 0) {
+		return;
+	} else if (gchandleFreeBufCount == 1) {
+		gchandle_free(gchandleFreeBuf[0]);
+		gchandleFreeBufCount = 0;
+		return;
+	}
+
+	backend::RMonoMemBlock arr = std::move(backend::RMonoMemBlock::alloc(process, gchandleFreeBufCount*sizeof(irmono_gchandle)));
+	arr.write(0, gchandleFreeBufCount*sizeof(irmono_gchandle), gchandleFreeBuf);
+
+	rmono_gchandle_free_multi (
+			abi->p2i_rmono_voidp(*arr),
+			abi->p2i_rmono_voidp(*arr + gchandleFreeBufCount*sizeof(irmono_gchandle))
+			);
+
+	gchandleFreeBufCount = 0;
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::flushRawFreeBuffer()
+{
+	if (rawFreeBufCount == 0) {
+		return;
+	} else if (rawFreeBufCount == 1) {
+		if (free) {
+			free(rawFreeBuf[0]);
+		} else if (g_free) {
+			g_free(rawFreeBuf[0]);
+		} else {
+			throw RMonoException("No remote free() function found for flushRawFreeBuffer()");
+		}
+		rawFreeBufCount = 0;
+		return;
+	}
+
+	backend::RMonoMemBlock arr = std::move(backend::RMonoMemBlock::alloc(process, rawFreeBufCount*sizeof(irmono_voidp)));
+	arr.write(0, rawFreeBufCount*sizeof(irmono_voidp), rawFreeBuf);
+
+	rmono_raw_free_multi (
+			abi->p2i_rmono_voidp(*arr),
+			abi->p2i_rmono_voidp(*arr + rawFreeBufCount*sizeof(irmono_voidp))
+			);
+
+	rawFreeBufCount = 0;
+}
+
+
+template <typename ABI>
+void RMonoAPIBackend<ABI>::flushFreeBuffers()
+{
+	flushGchandleFreeBuffer();
+	flushRawFreeBuffer();
+}
+
+
+template <typename ABI>
 std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 {
 	using namespace asmjit;
@@ -344,6 +478,8 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	asmjit::Label lForeachIPCVecAdapter = a->newLabel();
 	asmjit::Label lGchandlePin = a->newLabel();
 	asmjit::Label lArraySetref = a->newLabel();
+	asmjit::Label lGchandleFreeMulti = a->newLabel();
+	asmjit::Label lRawFreeMulti = a->newLabel();
 
 	{
 		// __cdecl void rmono_foreach_ipcvec_adapter(irmono_voidp elem, irmono_voidp vec);
@@ -477,6 +613,116 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 		a->ret();
 	}
 
+	{
+		Label lLoopStart = a->newLabel();
+		Label lLoopEnd = a->newLabel();
+
+		// __cdecl void rmono_gchandle_free_multi(irmono_voidp beg, irmono_voidp end);
+		a->bind(lGchandleFreeMulti);
+		a->push(a->zbx);
+		a->push(a->zsi);
+
+		if (x64) {
+			a->mov(a->zbx, a->zcx); // beg
+			a->mov(a->zsi, a->zdx); // end
+		} else {
+			a->mov(a->zbx, ptr(a->zsp, 12)); // beg
+			a->mov(a->zsi, ptr(a->zsp, 16)); // end
+		}
+
+		//	while (beg != end) {
+			a->bind(lLoopStart);
+			a->cmp(a->zbx, a->zsi);
+			a->je(lLoopEnd);
+
+				if (x64) {
+					//	gchandle_free(*((irmono_gchandle*) beg));
+						a->mov(ecx, ptr(a->zbx));
+						a->mov(a->zax, gchandle_free.getRawFuncAddress());
+						a->sub(a->zsp, 32);
+						a->call(a->zax);
+						a->add(a->zsp, 32);
+				} else {
+					//	gchandle_free(*((irmono_gchandle*) beg));
+						a->push(dword_ptr(a->zbx));
+						a->mov(a->zax, gchandle_free.getRawFuncAddress());
+						a->call(a->zax);
+						a->add(a->zsp, 4);
+				}
+
+		//		beg += sizeof(irmono_gchandle);
+				a->add(a->zbx, sizeof(irmono_gchandle));
+				a->jmp(lLoopStart);
+
+		//	}
+			a->bind(lLoopEnd);
+
+		a->pop(a->zsi);
+		a->pop(a->zbx);
+		a->ret();
+	}
+
+	{
+		Label lLoopStart = a->newLabel();
+		Label lLoopEnd = a->newLabel();
+
+		// __cdecl void rmono_raw_free_multi(irmono_voidp beg, irmono_voidp end);
+		a->bind(lRawFreeMulti);
+		a->push(a->zbx);
+		a->push(a->zsi);
+
+		if (x64) {
+			a->mov(a->zbx, a->zcx); // beg
+			a->mov(a->zsi, a->zdx); // end
+		} else {
+			a->mov(a->zbx, ptr(a->zsp, 12)); // beg
+			a->mov(a->zsi, ptr(a->zsp, 16)); // end
+		}
+
+		//	while (beg != end) {
+			a->bind(lLoopStart);
+			a->cmp(a->zbx, a->zsi);
+			a->je(lLoopEnd);
+
+				if (x64) {
+					//	free(*((irmono_voidp*) beg));
+						a->mov(a->zcx, ptr(a->zbx));
+						if (free) {
+							a->mov(a->zax, free.getRawFuncAddress());
+						} else if (g_free) {
+							a->mov(a->zax, g_free.getRawFuncAddress());
+						} else {
+							throw RMonoException("No remote free() function found for rmono_raw_free_multi()");
+						}
+						a->sub(a->zsp, 32);
+						a->call(a->zax);
+						a->add(a->zsp, 32);
+				} else {
+					//	free(*((irmono_voidp*) beg));
+						a->push(dword_ptr(a->zbx));
+						if (free) {
+							a->mov(a->zax, free.getRawFuncAddress());
+						} else if (g_free) {
+							a->mov(a->zax, g_free.getRawFuncAddress());
+						} else {
+							throw RMonoException("No remote free() function found for rmono_raw_free_multi()");
+						}
+						a->call(a->zax);
+						a->add(a->zsp, 4);
+				}
+
+		//		beg += sizeof(irmono_voidp);
+				a->add(a->zbx, sizeof(irmono_voidp));
+				a->jmp(lLoopStart);
+
+		//	}
+			a->bind(lLoopEnd);
+
+		a->pop(a->zsi);
+		a->pop(a->zbx);
+		a->ret();
+	}
+
 	std::string boilerplateCode((const char*) a->make(), a->getCodeSize());
 
 	if (a->isLabelBound(lForeachIPCVecAdapter)) {
@@ -487,6 +733,12 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	}
 	if (a->isLabelBound(lArraySetref)) {
 		rmono_array_setref.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySetref)));
+	}
+	if (a->isLabelBound(lGchandleFreeMulti)) {
+		rmono_gchandle_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandleFreeMulti)));
+	}
+	if (a->isLabelBound(lRawFreeMulti)) {
+		rmono_raw_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lRawFreeMulti)));
 	}
 
 	return boilerplateCode;

@@ -96,6 +96,25 @@ private:
 		Data(RMonoHelperContext* ctx, RMonoClassPtr cls)
 				: ctx(ctx), mono(ctx->getMonoAPI()), cls(cls) {}
 
+		RMonoVTablePtr vtable() const
+		{
+			if (!cachedVtable)
+				const_cast<Data*>(this)->cachedVtable = mono->classVTable(cls);
+			return cachedVtable;
+		}
+		RMonoTypePtr type() const
+		{
+			if (!cachedType)
+				const_cast<Data*>(this)->cachedType = mono->classGetType(cls);
+			return cachedType;
+		}
+		RMonoReflectionTypePtr typeObject() const
+		{
+			if (!cachedTypeObj)
+				const_cast<Data*>(this)->cachedTypeObj = mono->typeGetObject(type());
+			return cachedTypeObj;
+		}
+
 		RMonoHelperContext* ctx;
 		RMonoAPI* mono;
 		RMonoClassPtr cls;
@@ -104,6 +123,10 @@ private:
 		std::unordered_map<std::string, RMonoProperty> propsByName;
 		std::unordered_map<MethodNameWithParamCount, RMonoMethod, MethodNameWithParamCountHash> methodsByName;
 		std::unordered_map<MethodDesc, RMonoMethod, MethodDescHash> methodsByDesc;
+
+		RMonoVTablePtr cachedVtable;
+		RMonoTypePtr cachedType;
+		RMonoReflectionTypePtr cachedTypeObj;
 	};
 
 public:
@@ -161,9 +184,9 @@ public:
 	template <typename... VariantT>
 	inline RMonoObject newObjectDesc(const std::string_view& argsDesc, VariantT... args);
 
-	RMonoVTablePtr vtable() const { assertValid(); return d->mono->classVTable(d->cls); }
-	RMonoTypePtr type() const { assertValid(); return d->mono->classGetType(d->cls); }
-	RMonoReflectionTypePtr typeObject() const { assertValid(); return d->mono->typeGetObject(type()); }
+	RMonoVTablePtr vtable() const { assertValid(); d->vtable(); }
+	RMonoTypePtr type() const { assertValid(); return d->type(); }
+	RMonoReflectionTypePtr typeObject() const { assertValid(); return d->typeObject(); }
 	bool isValueType() const { assertValid(); return d->mono->classIsValueType(d->cls); }
 	int32_t valueSize(uint32_t* align = nullptr) const { assertValid(); return d->mono->classValueSize(d->cls, align); }
 

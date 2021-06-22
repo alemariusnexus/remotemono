@@ -99,6 +99,10 @@ public:
 	 */
 	inline bool isAPIFunctionSupported(const std::string& name) const;
 
+	inline void setFreeBufferMaxCount(uint32_t maxCount);
+
+	inline void flushFreeBuffers();
+
 	///@}
 
 
@@ -106,6 +110,7 @@ public:
 	// ********** MONO API WRAPPERS **********
 
 	inline void								free(rmono_voidp p);
+	inline void								freeLater(rmono_voidp p);
 
 	///@name Mono API - JIT Functions
 	///@{
@@ -363,6 +368,7 @@ public:
 	inline rmono_gchandle					gchandleNewWeakrefRaw(RMonoObjectPtrRaw obj, bool trackResurrection);
 	inline RMonoObjectPtrRaw				gchandleGetTarget(rmono_gchandle gchandle);
 	inline void								gchandleFree(rmono_gchandle gchandle);
+	inline void								gchandleFreeLater(rmono_gchandle gchandle);
 	///@}
 
 	///@name Mono API - Garbage Collector (GC)

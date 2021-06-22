@@ -395,3 +395,30 @@ public class HelperMethodRetTypeTest
 {
 	public static string GiveMeAString() { return "AString"; }
 }
+
+
+public class BenchmarkTest
+{
+	public static MyPoint BuildMyPointWithPointlessStringArg(string arg, float x, float y) {
+		return new MyPoint(x, y);
+	}
+}
+
+
+public class GCFreeTestCounter
+{
+	public static int refcount = 0;
+}
+
+public class GCFreeTestObj
+{
+	public GCFreeTestObj()
+	{
+		GCFreeTestCounter.refcount++;
+	}
+	
+	~GCFreeTestObj()
+	{
+		GCFreeTestCounter.refcount--;
+	}
+}

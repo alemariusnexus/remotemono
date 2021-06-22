@@ -44,13 +44,7 @@ void RMonoHandleAssemblyNamePtrDelete(PtrT p, RMonoAPIBase* mono)
 		}
 
 		if (e.api.assembly_name_new) {
-			if (e.api.free) {
-				e.api.free(e.abi.p2i_rmono_voidp((rmono_voidp) p));
-			} else if (e.api.g_free) {
-				e.api.g_free(e.abi.p2i_rmono_voidp((rmono_voidp) p));
-			} else {
-				assert(false);
-			}
+			e.api.freeLaterRaw(e.abi.p2i_rmono_voidp((rmono_voidp) p));
 		} else {
 			backend::RMonoMemBlock block(&mono->getProcess(), static_cast<rmono_voidp>(p), true);
 			block.free();
@@ -73,7 +67,7 @@ void RMonoObjectHandleDelete(rmono_gchandle gchandle, RMonoAPIBase* mono)
 {
 	RMonoAPIDispatcher* apid = mono->getAPIDispatcher();
 	apid->apply([&](auto& e) {
-		e.api.gchandle_free(e.abi.p2i_rmono_gchandle(gchandle));
+		e.api.freeLaterGchandle(e.abi.p2i_rmono_gchandle(gchandle));
 	});
 }
 

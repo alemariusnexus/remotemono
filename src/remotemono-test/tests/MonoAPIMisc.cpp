@@ -21,6 +21,7 @@
 
 #include <string>
 #include <algorithm>
+#include <vector>
 #include <gtest/gtest.h>
 #include <remotemono/RMonoBackendBlackBone.h>
 #include "../System.h"
@@ -84,4 +85,90 @@ TEST(MonoAPIMiscTest, DisasmCode)
 	EXPECT_NE(code.find("ldarg.2"), std::string::npos);
 	EXPECT_NE(code.find("add"), std::string::npos);
 	EXPECT_NE(code.find("ret"), std::string::npos);
+}
+
+
+TEST(MonoAPIMiscTest, GCLeakBuffered)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+
+	mono.setFreeBufferMaxCount(8192);
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+	auto clsCounter = mono.classFromName(img, "", "GCFreeTestCounter");
+	auto clsObj = mono.classFromName(img, "", "GCFreeTestObj");
+
+	auto fieldRefcount = mono.classGetFieldFromName(clsCounter, "refcount");
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), 0);
+
+	const int32_t numTestObjs = 1000;
+
+	std::vector<RMonoObjectPtr> objs;
+	objs.reserve(numTestObjs);
+
+	for (int32_t i = 0 ; i < numTestObjs ; i++) {
+		objs.push_back(mono.objectNew(clsObj));
+		mono.runtimeObjectInit(objs.back());
+	}
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), numTestObjs);
+
+	objs.erase(objs.begin() + numTestObjs/2, objs.end());
+	objs.resize(numTestObjs/2);
+	mono.gcCollect(mono.gcMaxGeneration());
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), numTestObjs/2);
+
+	objs.clear();
+
+	mono.gcCollect(mono.gcMaxGeneration());
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), 0);
+}
+
+
+TEST(MonoAPIMiscTest, GCLeakUnbuffered)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+
+	mono.setFreeBufferMaxCount(1);
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+	auto clsCounter = mono.classFromName(img, "", "GCFreeTestCounter");
+	auto clsObj = mono.classFromName(img, "", "GCFreeTestObj");
+
+	auto fieldRefcount = mono.classGetFieldFromName(clsCounter, "refcount");
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), 0);
+
+	const int32_t numTestObjs = 1000;
+
+	std::vector<RMonoObjectPtr> objs;
+	objs.reserve(numTestObjs);
+
+	for (int32_t i = 0 ; i < numTestObjs ; i++) {
+		objs.push_back(mono.objectNew(clsObj));
+		mono.runtimeObjectInit(objs.back());
+	}
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), numTestObjs);
+
+	objs.erase(objs.begin() + numTestObjs/2, objs.end());
+	objs.resize(numTestObjs/2);
+	mono.gcCollect(mono.gcMaxGeneration());
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), numTestObjs/2);
+
+	objs.clear();
+
+	mono.gcCollect(mono.gcMaxGeneration());
+
+	EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), 0);
+
+	mono.setFreeBufferMaxCount(8192);
 }

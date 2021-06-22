@@ -37,6 +37,9 @@
 
 
 
+#define REMOTEMONO_GCHANDLE_FREE_BUF_SIZE_MAX 256
+#define REMOTEMONO_RAW_FREE_BUF_SIZE_MAX 256
+
 
 #define REMOTEMONO_API_PART_BEGIN(structname, part) \
 		struct structname ## Part ## part { \
@@ -370,6 +373,8 @@ REMOTEMONO_API_PART_BEGIN(BoilerplateAPI, 1)
 	REMOTEMONO_API_SIMPLE(	rmono_foreach_ipcvec_adapter,	void,						irmono_voidp, irmono_voidp									)
 	REMOTEMONO_API_SIMPLE(	rmono_gchandle_pin,				irmono_gchandle,			irmono_gchandle												)
 	REMOTEMONO_API_SIMPLE(	rmono_array_setref,				void,						irmono_gchandle, irmono_uintptr_t, irmono_gchandle			)
+	REMOTEMONO_API_SIMPLE(	rmono_gchandle_free_multi,		void,						irmono_voidp, irmono_voidp									)
+	REMOTEMONO_API_SIMPLE(	rmono_raw_free_multi,			void,						irmono_voidp, irmono_voidp									)
 
 REMOTEMONO_API_PART_END()
 
@@ -432,6 +437,17 @@ public:
 
 	bool isAPIFunctionSupported(const std::string& name) const { return validAPIFuncNames.find(name) != validAPIFuncNames.end(); }
 
+	void setGchandleFreeBufferMaxCount(uint32_t maxCount);
+	void setRawFreeBufferMaxCount(uint32_t maxCount);
+	void setFreeBufferMaxCount(uint32_t maxCount);
+
+	void freeLaterGchandle(irmono_gchandle handle);
+	void freeLaterRaw(irmono_voidp ptr);
+
+	void flushGchandleFreeBuffer();
+	void flushRawFreeBuffer();
+	void flushFreeBuffers();
+
 private:
 	ABI* getABI() { return abi; }
 
@@ -454,6 +470,15 @@ private:
 	backend::RMonoMemBlock remDataBlock;
 	bool injected;
 	std::unordered_set<std::string> validAPIFuncNames;
+
+	irmono_gchandle gchandleFreeBuf[REMOTEMONO_GCHANDLE_FREE_BUF_SIZE_MAX];
+	irmono_voidp rawFreeBuf[REMOTEMONO_RAW_FREE_BUF_SIZE_MAX];
+
+	uint32_t gchandleFreeBufCount;
+	uint32_t rawFreeBufCount;
+
+	uint32_t gchandleFreeBufCountMax;
+	uint32_t rawFreeBufCountMax;
 };
 
 

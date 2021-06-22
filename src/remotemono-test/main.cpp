@@ -42,10 +42,144 @@ using namespace remotemono;
 
 
 
+void RunBenchmark()
+{
+	System& sys = System::getInstance();
+	RMonoAPI& mono = sys.getMono();
+
+	//mono.setFreeBufferMaxCount(1);
+
+	backend::RMonoProcess& proc = mono.getProcess();
+
+	uint32_t token = static_cast<uint32_t>(std::rand());
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+#ifdef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+	backend::blackbone::RMonoBlackBoneProcess* bbProc = dynamic_cast<backend::blackbone::RMonoBlackBoneProcess*>(&proc);
+
+	backend::RMonoMemBlock remoteCode;
+	rmono_voidp benchTestAddr = 0;
+
+	if (bbProc) {
+		auto asmPtr = proc.createAssembler();
+		auto& a = *asmPtr;
+
+		// __fastcall uint32_t BenchTest();
+		a->mov(a->zax, token);
+		a->ret();
+
+		remoteCode = std::move(backend::RMonoMemBlock::alloc(&proc, a->getCodeSize()));
+
+		void* code = malloc(a->getCodeSize());
+		a->relocCode(code);
+
+		proc.writeMemory(*remoteCode, a->getCodeSize(), code);
+
+		free(code);
+
+		benchTestAddr = *remoteCode;
+	}
+
+	auto benchTestFunc = blackbone::MakeRemoteFunction<uint32_t (__fastcall *)()> (
+			**bbProc, (blackbone::ptr_t) benchTestAddr);
+#endif
+
+	auto rootDomain = mono.getRootDomain();
+
+	auto benchCls = mono.classFromName(img, "", "BenchmarkTest");
+	auto pointCls = mono.classFromName(img, "", "MyPoint");
+
+	auto benchStr = mono.stringNew("Just some test string");
+
+	auto buildMyPointWithPointlessStringArg = mono.classGetMethodFromName(benchCls, "BuildMyPointWithPointlessStringArg");
+
+
+	RMonoLogInfo("Running benchmark ...");
+	Sleep(1000);
+
+
+
+	uint32_t numRawRPCPerSec = 0;
+	uint32_t numMonoRPCPerSec = 0;
+	uint32_t numRInvokePerSec = 0;
+
+	const uint32_t duration = 2000;
+	uint32_t t;
+
+#ifdef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+
+	{
+		uint32_t s = GetTickCount();
+		uint64_t numCalls = 0;
+
+		while ((t = GetTickCount()) - s < duration) {
+			auto res = benchTestFunc.Call({}, (**bbProc).remote().getWorker());
+			if (!res) {
+				throw TestEnvException("Error calling remote function BenchTest()");
+			}
+
+			if (token != *res) {
+				throw TestEnvException("Invalid token returned by remote function BenchTest()");
+			}
+
+			numCalls++;
+		}
+
+		numRawRPCPerSec = (uint32_t) (numCalls / (duration / (double) 1000));
+	}
+#endif
+
+	Sleep(250);
+
+	{
+		uint32_t s = GetTickCount();
+		uint64_t numCalls = 0;
+
+		while ((t = GetTickCount()) - s < duration) {
+			auto testRootDomain = mono.getRootDomain();
+
+			if (testRootDomain != rootDomain) {
+				throw TestEnvException("Invalid root domain");
+			}
+
+			numCalls++;
+		}
+
+		numMonoRPCPerSec = (uint32_t) (numCalls / (duration / (double) 1000));
+	}
+
+	Sleep(250);
+
+	{
+		uint32_t s = GetTickCount();
+		uint64_t numCalls = 0;
+
+		while ((t = GetTickCount()) - s < duration) {
+			auto res = mono.runtimeInvoke(buildMyPointWithPointlessStringArg, nullptr, {benchStr, 123.45f, 678.9f}, false);
+
+			numCalls++;
+		}
+
+		numRInvokePerSec = (uint32_t) (numCalls / (duration / (double) 1000));
+	}
+
+
+	RMonoLogInfo("**********");
+	RMonoLogInfo("Raw RPCs / second:  %u", numRawRPCPerSec);
+	RMonoLogInfo("Mono RPCs / second: %u", numMonoRPCPerSec);
+	RMonoLogInfo("RInvoke / second: %u", numRInvokePerSec);
+	RMonoLogInfo("**********");
+}
+
+
 
 int main(int argc, char** argv)
 {
 	System& sys = System::getInstance();
+
+	std::srand((int) std::time(0));
 
 	::testing::InitGoogleTest(&argc, argv);
 
@@ -84,6 +218,8 @@ int main(int argc, char** argv)
 	app.add_option("-l,--log-level", logLevelStr, "The logging level. Valid values are: verbose, debug, info, warning, error, none.");
 
 	app.add_option("-B,--backend", backendStr, std::string("The backend to use. Valid values are: ").append(backendListStr).append("."));
+
+	app.add_flag("-M,--benchmark", "Run performance benchmark instead of unit tests.");
 
 	try {
 		app.parse(argc, argv);
@@ -166,11 +302,14 @@ int main(int argc, char** argv)
 		sys.attach(targetAssemblyPath);
 
 
+		int res;
 
-		RMonoAPI& mono = sys.getMono();
-
-
-		int res = RUN_ALL_TESTS();
+		if (app["--benchmark"]->as<bool>()) {
+			RunBenchmark();
+			res = 0;
+		} else {
+			res = RUN_ALL_TESTS();
+		}
 
 		sys.detach();
 

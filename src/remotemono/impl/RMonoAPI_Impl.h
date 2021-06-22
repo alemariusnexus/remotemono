@@ -141,6 +141,22 @@ bool RMonoAPI::isAPIFunctionSupported(const std::string& name) const
 }
 
 
+void RMonoAPI::setFreeBufferMaxCount(uint32_t maxCount)
+{
+	return apid->apply([&](auto& e) {
+		return e.api.setFreeBufferMaxCount(maxCount);
+	});
+}
+
+
+void RMonoAPI::flushFreeBuffers()
+{
+	return apid->apply([&](auto& e) {
+		return e.api.flushFreeBuffers();
+	});
+}
+
+
 void RMonoAPI::selectABI()
 {
 	SYSTEM_INFO sysinfo;
@@ -222,6 +238,16 @@ void RMonoAPI::free(rmono_voidp p)
 		} else {
 			throw RMonoUnsupportedAPIException("mono_free");
 		}
+	});
+}
+
+
+void RMonoAPI::freeLater(rmono_voidp p)
+{
+	checkAttached();
+
+	apid->apply([&](auto& e) {
+		e.api.freeLaterRaw(e.abi.p2i_rmono_voidp(p));
 	});
 }
 
@@ -2522,10 +2548,23 @@ void RMonoAPI::gchandleFree(rmono_gchandle gchandle)
 }
 
 
+void RMonoAPI::gchandleFreeLater(rmono_gchandle gchandle)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(gchandle_free);
+
+	return apid->apply([&](auto& e) {
+		e.api.freeLaterGchandle(e.abi.p2i_rmono_gchandle(gchandle));
+	});
+}
+
+
 void RMonoAPI::gcCollect(rmono_int generation)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(gc_collect);
+
+	flushFreeBuffers();
 
 	apid->apply([&](auto& e) {
 		e.api.gc_collect(e.abi.p2i_rmono_int(generation));
