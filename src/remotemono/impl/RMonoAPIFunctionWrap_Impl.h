@@ -1068,7 +1068,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 				} else {
 		//			curDynStackPtr -= *((uint32_t*) blockPtr) * sizeof(VariantArrayStackEntry);
 					a->mov(a->zcx, dword_ptr(a->zdi));
-					a->shl(a->zcx, 2*sizeof(IRMonoObjectPtrRaw));
+					a->shl(a->zcx, static_ilog2(2*sizeof(IRMonoObjectPtrRaw)));
 					a->sub(a->zbx, a->zcx);
 				}
 
