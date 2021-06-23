@@ -2830,16 +2830,89 @@ std::string RMonoAPI::objectToStringUTF8(RMonoObjectPtr obj, bool catchException
 
 
 template <typename T>
-std::vector<T> RMonoAPI::arrayAsVector(RMonoArrayPtr arr)
+std::vector<T> RMonoAPI::arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rmono_uintptr_t end)
 {
 	std::vector<T> out;
 
-	rmono_uintptr_t len = arrayLength(arr);
-	for (rmono_uintptr_t i = 0 ; i < len ; i++) {
-		out.push_back(arrayGet<T>(arr, i));
+	if (!arr) {
+		throw RMonoException("Invalid array");
+	}
+	if (end <= start) {
+		return out;
 	}
 
+	rmono_uintptr_t arrLen = arrayLength(arr);
+	if (end > arrLen) {
+		end = arrLen;
+	}
+
+	apid->apply([&](auto& e) {
+		typedef decltype(e.abi) ABI;
+
+		uint32_t elemSize;
+		uint32_t argElemSize;
+
+		if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
+			elemSize = sizeof(typename ABI::irmono_gchandle);
+			argElemSize = 0;
+		} else {
+			elemSize = sizeof(T);
+			argElemSize = elemSize;
+		}
+
+		rmono_uintptr_t blockSize = static_cast<rmono_uintptr_t>(elemSize)*(end-start);
+		backend::RMonoMemBlock block = std::move(backend::RMonoMemBlock::alloc(&process, static_cast<size_t>(blockSize)));
+
+		auto actualEnd = e.abi.i2p_rmono_uintptr_t(e.api.rmono_array_slice (
+				e.abi.p2i_rmono_voidp(*block),
+				e.abi.p2i_rmono_gchandle(*arr),
+				e.abi.p2i_rmono_uintptr_t(start),
+				e.abi.p2i_rmono_uintptr_t(end),
+				argElemSize
+				));
+
+		rmono_uintptr_t numElems = actualEnd - start;
+
+		if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
+			out.reserve(static_cast<size_t>(numElems));
+
+			typename ABI::irmono_gchandle* localBlock = new typename ABI::irmono_gchandle[static_cast<size_t>(numElems)];
+			block.read(0, static_cast<size_t>(numElems*sizeof(typename ABI::irmono_gchandle)), localBlock);
+
+			for (rmono_uintptr_t i = 0 ; i < numElems ; i++) {
+				out.emplace_back(e.abi.i2p_rmono_gchandle(localBlock[i]), this);
+			}
+
+			delete[] localBlock;
+		} else {
+			if constexpr(std::is_same_v<T, bool>) {
+				// std::vector<bool> may actually store its elements in BITS, so we can't use data() to access it.
+				// This actually seems to be standards compliant. Ridiculous.
+				out.reserve(static_cast<size_t>(numElems));
+
+				bool* localBlock = new bool[static_cast<size_t>(numElems)];
+				block.read(0, static_cast<size_t>(numElems*sizeof(bool)), localBlock);
+
+				for (rmono_uintptr_t i = 0 ; i < numElems ; i++) {
+					out.push_back(localBlock[i]);
+				}
+
+				delete[] localBlock;
+			} else {
+				out.resize(static_cast<size_t>(numElems));
+				block.read(0, static_cast<size_t>(numElems*sizeof(T)), out.data());
+			}
+		}
+	});
+
 	return out;
+}
+
+
+template <typename T>
+std::vector<T> RMonoAPI::arrayAsVector(RMonoArrayPtr arr)
+{
+	return arraySlice<T>(arr, 0, (std::numeric_limits<uint32_t>::max)());
 }
 
 

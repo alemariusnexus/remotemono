@@ -436,6 +436,9 @@ public:
 	 */
 	inline std::string						objectToStringUTF8(RMonoObjectPtr obj, bool catchExceptions = true);
 
+	template <typename T>
+		std::vector<T>						arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rmono_uintptr_t end);
+
 	/**
 	 * Converts the given MonoArray to a local std::vector. Can be used for both value types (e.g. `arrayAsVector<int32_t>(arr)`)
 	 * and reference types (e.g. `arrayAsVector<RMonoObjectPtr>(arr)`). Note that this will always return a flat vector, even

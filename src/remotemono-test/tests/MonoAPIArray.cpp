@@ -57,6 +57,31 @@ TEST(MonoAPIArrayTest, ArraySimple)
 }
 
 
+TEST(MonoAPIArrayTest, ArrayBool)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+
+	auto dom = mono.domainGet();
+
+	auto boolCls = mono.getBooleanClass();
+
+	auto arr1 = mono.arrayNew(dom, boolCls, 4);
+	EXPECT_EQ(mono.arrayLength(arr1), 4);
+
+	mono.arraySet(arr1, 0, true);
+	mono.arraySet(arr1, 1, false);
+	mono.arraySet(arr1, 2, false);
+	mono.arraySet(arr1, 3, true);
+
+	EXPECT_EQ(mono.arrayGet<bool>(arr1, 0), true);
+	EXPECT_EQ(mono.arrayGet<bool>(arr1, 1), false);
+	EXPECT_EQ(mono.arrayGet<bool>(arr1, 2), false);
+	EXPECT_EQ(mono.arrayGet<bool>(arr1, 3), true);
+
+	EXPECT_EQ(mono.arrayAsVector<bool>(arr1), std::vector<bool>({true, false, false, true}));
+}
+
+
 TEST(MonoAPIArrayTest, ArrayReferenceType)
 {
 	RMonoAPI& mono = System::getInstance().getMono();

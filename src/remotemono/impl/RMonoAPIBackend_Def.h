@@ -377,6 +377,8 @@ REMOTEMONO_API_PART_BEGIN(BoilerplateAPI, 1)
 	REMOTEMONO_API_SIMPLE(	rmono_foreach_ipcvec_adapter,	void,						irmono_voidp, irmono_voidp									)
 	REMOTEMONO_API_SIMPLE(	rmono_gchandle_pin,				irmono_gchandle,			irmono_gchandle												)
 	REMOTEMONO_API_SIMPLE(	rmono_array_setref,				void,						irmono_gchandle, irmono_uintptr_t, irmono_gchandle			)
+	REMOTEMONO_API_SIMPLE(	rmono_array_slice,				irmono_uintptr_t,			irmono_voidp, irmono_gchandle,
+																						irmono_uintptr_t, irmono_uintptr_t, uint32_t				)
 	REMOTEMONO_API_SIMPLE(	rmono_gchandle_free_multi,		void,						irmono_voidp, irmono_voidp									)
 	REMOTEMONO_API_SIMPLE(	rmono_raw_free_multi,			void,						irmono_voidp, irmono_voidp									)
 

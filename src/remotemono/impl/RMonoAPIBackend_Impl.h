@@ -478,6 +478,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	asmjit::Label lForeachIPCVecAdapter = a->newLabel();
 	asmjit::Label lGchandlePin = a->newLabel();
 	asmjit::Label lArraySetref = a->newLabel();
+	asmjit::Label lArraySlice = a->newLabel();
 	asmjit::Label lGchandleFreeMulti = a->newLabel();
 	asmjit::Label lRawFreeMulti = a->newLabel();
 
@@ -614,6 +615,164 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	}
 
 	{
+		Label lRawType = a->newLabel();
+		Label lTypeEnd = a->newLabel();
+		Label lRawTypeWhileStart = a->newLabel();
+		Label lRawTypeWhileEnd = a->newLabel();
+		Label lObjTypeWhileStart = a->newLabel();
+		Label lObjTypeWhileEnd = a->newLabel();
+		Label lRawTypeMemcpyStart = a->newLabel();
+		Label lRawTypeMemcpyEnd = a->newLabel();
+
+		// __cdecl irmono_uintptr_t rmono_array_slice (
+		//			irmono_voidp outBuf,
+		//			irmono_gchandle arr,
+		//			irmono_uintptr_t start, irmono_uintptr_t end,
+		//			uint32_t elemSize)
+
+		a->bind(lArraySlice);
+		a->push(a->zbx);
+		a->push(a->zsi);
+		a->push(a->zdi);
+		a->push(a->zbp);
+		a->push(a->zsp); // Aligns stack to 16 bytes
+
+		if (x64) {
+			a->mov(a->zbx, a->zcx); // outBuf
+			a->mov(a->zsi, a->zdx); // arr / rawArr
+			a->mov(a->zdi, r8); // start
+			a->mov(a->zbp, r9); // end
+		} else {
+			a->mov(a->zbx, ptr(a->zsp, 24)); // outBuf
+			a->mov(a->zsi, ptr(a->zsp, 28)); // arr / rawArr
+			a->mov(a->zdi, ptr(a->zsp, 32)); // start
+			a->mov(a->zbp, ptr(a->zsp, 36)); // end
+		}
+
+		//	IRMonoArrayHandleRaw rawArr = mono_gchandle_get_target_checked(arr);
+			a->mov(a->zcx, a->zsi);
+			AsmGenGchandleGetTargetChecked(a, gchandle_get_target.getRawFuncAddress(), x64);
+			a->mov(a->zsi, a->zax);
+
+			if (x64) {
+				a->mov(a->zdx, dword_ptr(a->zsp, 80)); // elemSize
+			} else {
+				a->mov(a->zdx, ptr(a->zsp, 40)); // elemSize
+			}
+
+
+		//	if (elemSize == 0) {
+			a->test(edx, edx);
+			a->jnz(lRawType);
+
+		//		while (start < end) {
+				a->bind(lObjTypeWhileStart);
+				a->cmp(a->zdi, a->zbp);
+				a->jae(lObjTypeWhileEnd);
+
+		//			void* elemPtr = mono_array_addr_with_size(rawArr, sizeof(IRMonoObjectPtrRaw), start);
+					if (x64) {
+						a->mov(a->zcx, a->zsi);
+						a->mov(a->zdx, sizeof(IRMonoObjectPtrRaw));
+						a->mov(r8, a->zdi);
+						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->sub(a->zsp, 32);
+						a->call(a->zax);
+						a->add(a->zsp, 32);
+					} else {
+						a->push(a->zdi);
+						a->push(sizeof(IRMonoObjectPtrRaw));
+						a->push(a->zsi);
+						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->call(a->zax);
+						a->add(a->zsp, 12);
+					}
+
+		//			*outBuf = mono_gchandle_new_checked(*((IRMonoObjectPtrRaw*) elemPtr));
+					a->mov(a->zcx, ptr(a->zax));
+					AsmGenGchandleNewChecked(a, gchandle_new.getRawFuncAddress(), x64);
+					a->mov(dword_ptr(a->zbx), eax);
+
+		//			outBuf += sizeof(irmono_gchandle);
+		//			start++;
+					a->add(a->zbx, sizeof(irmono_gchandle));
+					a->inc(a->zdi);
+
+				a->jmp(lObjTypeWhileStart);
+		//		}
+				a->bind(lObjTypeWhileEnd);
+
+			a->jmp(lTypeEnd);
+		//	} else {
+			a->bind(lRawType);
+
+		//		while (start < end) {
+				a->bind(lRawTypeWhileStart);
+				a->cmp(a->zdi, a->zbp);
+				a->jae(lRawTypeWhileEnd);
+
+		//			void* elemPtr = mono_array_addr_with_size(rawArr, elemSize, start);
+					if (x64) {
+						a->mov(a->zcx, a->zsi);
+						a->mov(a->zdx, dword_ptr(a->zsp, 80));
+						a->mov(r8, a->zdi);
+						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->sub(a->zsp, 32);
+						a->call(a->zax);
+						a->add(a->zsp, 32);
+						a->mov(a->zdx, dword_ptr(a->zsp, 80)); // Restore elemSize
+					} else {
+						a->push(a->zdi);
+						a->push(dword_ptr(a->zsp, 44));
+						a->push(a->zsi);
+						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->call(a->zax);
+						a->add(a->zsp, 12);
+						a->mov(a->zdx, ptr(a->zsp, 40)); // Restore elemSize
+					}
+
+		//			while (elemSize != 0) {
+					a->bind(lRawTypeMemcpyStart);
+					a->test(a->zdx, a->zdx);
+					a->jz(lRawTypeMemcpyEnd);
+
+		//				*((char*) outBuf) = ((char*) elemPtr);
+						a->mov(cl, byte_ptr(a->zax));
+						a->mov(byte_ptr(a->zbx), cl);
+
+		//				outBuf++;
+		//				elemPtr++;
+		//				elemSize--;
+						a->inc(a->zbx);
+						a->inc(a->zax);
+						a->dec(a->zdx);
+
+					a->jmp(lRawTypeMemcpyStart);
+		//			}
+					a->bind(lRawTypeMemcpyEnd);
+
+		//			start++;
+					a->inc(a->zdi);
+
+				a->jmp(lRawTypeWhileStart);
+		//		}
+				a->bind(lRawTypeWhileEnd);
+
+		//	}
+			a->bind(lTypeEnd);
+
+		//	return end;
+			a->mov(a->zax, a->zbp);
+
+		a->pop(a->zsp);
+		a->pop(a->zbp);
+		a->pop(a->zdi);
+		a->pop(a->zsi);
+		a->pop(a->zbx);
+		a->ret();
+	}
+
+	{
 		Label lLoopStart = a->newLabel();
 		Label lLoopEnd = a->newLabel();
 
@@ -733,6 +892,9 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	}
 	if (a->isLabelBound(lArraySetref)) {
 		rmono_array_setref.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySetref)));
+	}
+	if (a->isLabelBound(lArraySlice)) {
+		rmono_array_slice.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySlice)));
 	}
 	if (a->isLabelBound(lGchandleFreeMulti)) {
 		rmono_gchandle_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandleFreeMulti)));
