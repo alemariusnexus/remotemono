@@ -223,5 +223,31 @@ TEST(MonoAPIMethodTest, RuntimeInvokeValueType)
 }
 
 
+TEST(MonoAPIMethodTest, RuntimeInvokeWithRetCls)
+{
+	char buf[256];
+
+	RMonoAPI& mono = System::getInstance().getMono();
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+	auto cls = mono.classFromName(img, "", "InvokeTest");
+
+	RMonoClassPtr retvalCls;
+	auto retval = mono.runtimeInvokeWithRetCls(retvalCls, mono.classGetMethodFromName(cls, "GiveMeAString"), nullptr, {});
+
+	ASSERT_TRUE(retval);
+
+	RMonoClassPtr actualRetvalCls = mono.objectGetClass(retval);
+
+	EXPECT_EQ(actualRetvalCls, mono.getStringClass());
+	EXPECT_NE(actualRetvalCls, mono.getExceptionClass());
+
+	EXPECT_TRUE(retvalCls);
+	EXPECT_EQ(retvalCls, actualRetvalCls);
+}
+
+
 
 

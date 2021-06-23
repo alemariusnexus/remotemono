@@ -112,7 +112,6 @@ public:
 
 	void set(const RMonoVariant& val)
 	{
-		assertValid();
 		if (isStatic()) {
 			d->mono->fieldStaticSetValue(d->vtable, d->field, val);
 		} else {
@@ -128,7 +127,6 @@ public:
 
 	void get(RMonoVariant& val)
 	{
-		assertValid();
 		if (isStatic()) {
 			d->mono->fieldStaticGetValue(d->vtable, d->field, val);
 		} else {
@@ -145,7 +143,6 @@ public:
 	template <typename T = RMonoObject>
 		T get()
 	{
-		assertValid();
 		if constexpr(std::is_same_v<T, RMonoObject>) {
 			return getBoxed();
 		} else if constexpr(std::is_same_v<T, RMonoObjectPtr>) {

@@ -474,7 +474,10 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 
 	backend::RMonoAsmHelper& a = *ctx.a;
 
-	if constexpr(std::is_base_of_v<Variant, typename ArgT::Type>) {
+	if constexpr(tags::has_param_tag_v<ArgT, tags::ParamOutRetClsTag>) {
+		// Skip raw argument
+		genWrapperBuildRawArg<wrapArgIdx+1, rawArgIdx, RestT...>(ctx, rest...);
+	} else if constexpr(std::is_base_of_v<Variant, typename ArgT::Type>) {
 		Label lBuildEnd = a->newLabel();
 		Label lNullPtr = a->newLabel();
 		Label lNotMonoObjectPtr = a->newLabel();
@@ -971,7 +974,23 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 
 	backend::RMonoAsmHelper& a = *ctx.a;
 
-	if constexpr(std::is_base_of_v<Variant, typename ArgT::Type>) {
+	if constexpr(tags::has_param_tag_v<ArgT, tags::ParamOutRetClsTag>) {
+		//	IRMonoObjectPtrRaw obj = mono_gchandle_get_target_checked(stackRetval);
+			a->mov(a->zcx, ptr(a->zbp, ctx.stackOffsRetval));
+			genGchandleGetTargetChecked(ctx);
+
+		//	IRMonoClassPtr objCls = mono_object_get_class(obj);
+			a->mov(a->zcx, a->zax);
+			genObjectGetClass(ctx);
+
+		//	*((irmono_voidp*) wrapArgs[wrapArgIdx]) = objCls;
+			a->mov(a->zdx, ptrWrapFuncArg<wrapArgIdx>(ctx));
+			a->mov(ptr(a->zdx), a->zax);
+
+		genWrapperHandleOutParams<wrapArgIdx+1, rawArgIdx, RestT...>(ctx, rest...);
+
+		return;
+	} else if constexpr(std::is_base_of_v<Variant, typename ArgT::Type>) {
 		Label lHandleEnd = a->newLabel();
 
 		//	uint8_t* blockPtr = wrapArgs[wrapArgIdx];
@@ -1139,6 +1158,13 @@ template <typename CommonT, typename ABI, typename RetT, typename... ArgsT>
 void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genObjectUnbox(AsmBuildContext& ctx)
 {
 	AsmGenObjectUnbox(*ctx.a, ctx.objectUnboxAddr, ctx.x64);
+}
+
+
+template <typename CommonT, typename ABI, typename RetT, typename... ArgsT>
+void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genObjectGetClass(AsmBuildContext& ctx)
+{
+	AsmGenObjectGetClass(*ctx.a, ctx.objectGetClassAddr, ctx.x64);
 }
 
 

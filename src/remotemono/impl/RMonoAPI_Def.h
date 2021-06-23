@@ -251,6 +251,8 @@ public:
 	inline void								fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, RMonoVariant& val);
 	inline void								fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field, RMonoVariant&& val);
 	template <typename T> T					fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field);
+	inline RMonoObjectPtr					fieldGetValueObjectWithRetCls(RMonoClassPtr& retCls, RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj = nullptr);
+	inline RMonoObjectPtr					fieldGetValueObjectWithRetCls(RMonoClassPtr& retCls, RMonoClassFieldPtr field, RMonoObjectPtr obj = nullptr);
 	inline RMonoObjectPtr					fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj = nullptr);
 	inline RMonoObjectPtr					fieldGetValueObject(RMonoClassFieldPtr field, RMonoObjectPtr obj = nullptr);
 	inline void								fieldStaticSetValue(RMonoVTablePtr vtable, RMonoClassFieldPtr field, const RMonoVariant& val);
@@ -276,6 +278,16 @@ public:
 	inline RMonoMethodPtr					methodDescSearchInClass(const std::string_view& desc, bool includeNamespace, RMonoClassPtr cls);
 	inline RMonoMethodPtr					methodDescSearchInImage(RMonoMethodDescPtr desc, RMonoImagePtr image);
 	inline RMonoMethodPtr					methodDescSearchInImage(const std::string_view& desc, bool includeNamespace, RMonoImagePtr image);
+	inline RMonoObjectPtr					runtimeInvokeWithRetCls (	RMonoClassPtr& retCls,
+																		RMonoMethodPtr method,
+																		const RMonoVariant& obj,
+																		RMonoVariantArray& params,
+																		bool catchExceptions = true);
+	inline RMonoObjectPtr					runtimeInvokeWithRetCls (	RMonoClassPtr& retCls,
+																		RMonoMethodPtr method,
+																		const RMonoVariant& obj = nullptr,
+																		RMonoVariantArray&& params = RMonoVariantArray(),
+																		bool catchExceptions = true);
 	inline RMonoObjectPtr					runtimeInvoke (	RMonoMethodPtr method, const RMonoVariant& obj,
 															RMonoVariantArray& params, bool catchExceptions = true);
 	inline RMonoObjectPtr					runtimeInvoke (	RMonoMethodPtr method, const RMonoVariant& obj = nullptr,
@@ -290,6 +302,16 @@ public:
 	inline RMonoClassPtr					propertyGetParent(RMonoPropertyPtr prop);
 	inline RMonoMethodPtr					propertyGetSetMethod(RMonoPropertyPtr prop);
 	inline RMonoMethodPtr					propertyGetGetMethod(RMonoPropertyPtr prop);
+	inline RMonoObjectPtr					propertyGetValueWithRetCls (	RMonoClassPtr& retCls,
+																			RMonoPropertyPtr prop,
+																			const RMonoVariant& obj,
+																			RMonoVariantArray& params,
+																			bool catchExceptions = true);
+	inline RMonoObjectPtr					propertyGetValueWithRetCls (	RMonoClassPtr& retCls,
+																			RMonoPropertyPtr prop,
+																			const RMonoVariant& obj = nullptr,
+																			RMonoVariantArray&& params = RMonoVariantArray(),
+																			bool catchExceptions = true);
 	inline RMonoObjectPtr					propertyGetValue (	RMonoPropertyPtr prop, const RMonoVariant& obj,
 																RMonoVariantArray& params, bool catchExceptions = true);
 	inline RMonoObjectPtr					propertyGetValue (	RMonoPropertyPtr prop, const RMonoVariant& obj = nullptr,

@@ -1517,7 +1517,7 @@ T RMonoAPI::fieldGetValue(RMonoObjectPtr obj, RMonoClassFieldPtr field)
 }
 
 
-RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj)
+RMonoObjectPtr RMonoAPI::fieldGetValueObjectWithRetCls(RMonoClassPtr& retCls, RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(field_get_value_object);
@@ -1525,18 +1525,37 @@ RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFi
 	if (!field) throw RMonoException("Invalid field");
 
 	return apid->apply([&](auto& e) {
-		return e.abi.i2p_RMonoObjectPtr(e.api.field_get_value_object (
+		typedef decltype(e.abi) ABI;
+		typename ABI::IRMonoClassPtr iretCls;
+		auto res = e.abi.i2p_RMonoObjectPtr(e.api.field_get_value_object (
 				e.abi.p2i_RMonoDomainPtr(domain),
 				e.abi.p2i_RMonoClassFieldPtr(field),
-				e.abi.p2i_RMonoObjectPtr(obj)
+				e.abi.p2i_RMonoObjectPtr(obj),
+				&iretCls
 				));
+		retCls = e.abi.p2i_RMonoClassPtr(iretCls);
+		return res;
 	});
+}
+
+
+RMonoObjectPtr RMonoAPI::fieldGetValueObjectWithRetCls(RMonoClassPtr& retCls, RMonoClassFieldPtr field, RMonoObjectPtr obj)
+{
+	return fieldGetValueObjectWithRetCls(retCls, domainGet(), field, obj);
+}
+
+
+RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoDomainPtr domain, RMonoClassFieldPtr field, RMonoObjectPtr obj)
+{
+	RMonoClassPtr retCls;
+	return fieldGetValueObjectWithRetCls(retCls, domain, field, obj);
 }
 
 
 RMonoObjectPtr RMonoAPI::fieldGetValueObject(RMonoClassFieldPtr field, RMonoObjectPtr obj)
 {
-	return fieldGetValueObject(domainGet(), field, obj);
+	RMonoClassPtr retCls;
+	return fieldGetValueObjectWithRetCls(retCls, field, obj);
 }
 
 
@@ -1816,27 +1835,51 @@ RMonoMethodPtr RMonoAPI::propertyGetGetMethod(RMonoPropertyPtr prop)
 }
 
 
-RMonoObjectPtr RMonoAPI::propertyGetValue(RMonoPropertyPtr prop, const RMonoVariant& obj, RMonoVariantArray& params, bool catchExceptions)
+RMonoObjectPtr RMonoAPI::propertyGetValueWithRetCls(RMonoClassPtr& retCls, RMonoPropertyPtr prop, const RMonoVariant& obj, RMonoVariantArray& params, bool catchExceptions)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_value);
 	if (!prop) throw RMonoException("Invalid property");
 
 	return apid->apply([&](auto& e) {
-		return e.abi.i2p_RMonoObjectPtr(e.api.property_get_value(e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions));
+		typedef decltype(e.abi) ABI;
+		typename ABI::IRMonoClassPtr iretCls;
+		auto res = e.abi.i2p_RMonoObjectPtr(e.api.property_get_value (
+				e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions, &iretCls));
+		retCls = e.abi.p2i_RMonoClassPtr(iretCls);
+		return res;
 	});
+}
+
+
+RMonoObjectPtr RMonoAPI::propertyGetValueWithRetCls(RMonoClassPtr& retCls, RMonoPropertyPtr prop, const RMonoVariant& obj, RMonoVariantArray&& params, bool catchExceptions)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_value);
+	if (!prop) throw RMonoException("Invalid property");
+
+	return apid->apply([&](auto& e) {
+		typedef decltype(e.abi) ABI;
+		typename ABI::IRMonoClassPtr iretCls;
+		auto res = e.abi.i2p_RMonoObjectPtr(e.api.property_get_value (
+				e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions, &iretCls));
+		retCls = e.abi.p2i_RMonoClassPtr(iretCls);
+		return res;
+	});
+}
+
+
+RMonoObjectPtr RMonoAPI::propertyGetValue(RMonoPropertyPtr prop, const RMonoVariant& obj, RMonoVariantArray& params, bool catchExceptions)
+{
+	RMonoClassPtr retCls;
+	return propertyGetValueWithRetCls(retCls, prop, obj, params, catchExceptions);
 }
 
 
 RMonoObjectPtr RMonoAPI::propertyGetValue(RMonoPropertyPtr prop, const RMonoVariant& obj, RMonoVariantArray&& params, bool catchExceptions)
 {
-	checkAttached();
-	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(property_get_value);
-	if (!prop) throw RMonoException("Invalid property");
-
-	return apid->apply([&](auto& e) {
-		return e.abi.i2p_RMonoObjectPtr(e.api.property_get_value(e.abi.p2i_RMonoPropertyPtr(prop), obj, params, catchExceptions));
-	});
+	RMonoClassPtr retCls;
+	return propertyGetValueWithRetCls(retCls, prop, obj, std::move(params), catchExceptions);
 }
 
 
@@ -2596,27 +2639,51 @@ rmono_int RMonoAPI::gcGetGeneration(RMonoObjectPtr obj)
 
 
 
-RMonoObjectPtr RMonoAPI::runtimeInvoke(RMonoMethodPtr method, const RMonoVariant& obj, RMonoVariantArray& params, bool catchExceptions)
+RMonoObjectPtr RMonoAPI::runtimeInvokeWithRetCls(RMonoClassPtr& retCls, RMonoMethodPtr method, const RMonoVariant& obj, RMonoVariantArray& params, bool catchExceptions)
 {
 	checkAttached();
 	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(runtime_invoke);
 	if (!method) throw RMonoException("Invalid method");
 
 	return apid->apply([&](auto& e) {
-		return e.abi.i2p_RMonoObjectPtr(e.api.runtime_invoke(e.abi.p2i_RMonoMethodPtr(method), obj, params, catchExceptions));
+		typedef decltype(e.abi) ABI;
+		typename ABI::IRMonoClassPtr iretCls;
+		RMonoObjectPtr retval = e.abi.i2p_RMonoObjectPtr(e.api.runtime_invoke(e.abi.p2i_RMonoMethodPtr(method),
+				obj, params, catchExceptions, &iretCls));
+		retCls = e.abi.i2p_RMonoClassPtr(iretCls);
+		return retval;
 	});
+}
+
+
+RMonoObjectPtr RMonoAPI::runtimeInvokeWithRetCls(RMonoClassPtr& retCls, RMonoMethodPtr method, const RMonoVariant& obj, RMonoVariantArray&& params, bool catchExceptions)
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(runtime_invoke);
+	if (!method) throw RMonoException("Invalid method");
+
+	return apid->apply([&](auto& e) {
+		typedef decltype(e.abi) ABI;
+		typename ABI::IRMonoClassPtr iretCls;
+		RMonoObjectPtr retval = e.abi.i2p_RMonoObjectPtr(e.api.runtime_invoke(e.abi.p2i_RMonoMethodPtr(method),
+				obj, params, catchExceptions, &iretCls));
+		retCls = e.abi.i2p_RMonoClassPtr(iretCls);
+		return retval;
+	});
+}
+
+
+RMonoObjectPtr RMonoAPI::runtimeInvoke(RMonoMethodPtr method, const RMonoVariant& obj, RMonoVariantArray& params, bool catchExceptions)
+{
+	RMonoClassPtr retCls;
+	return runtimeInvokeWithRetCls(retCls, method, obj, params, catchExceptions);
 }
 
 
 RMonoObjectPtr RMonoAPI::runtimeInvoke(RMonoMethodPtr method, const RMonoVariant& obj, RMonoVariantArray&& params, bool catchExceptions)
 {
-	checkAttached();
-	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(runtime_invoke);
-	if (!method) throw RMonoException("Invalid method");
-
-	return apid->apply([&](auto& e) {
-		return e.abi.i2p_RMonoObjectPtr(e.api.runtime_invoke(e.abi.p2i_RMonoMethodPtr(method), obj, params, catchExceptions));
-	});
+	RMonoClassPtr retCls;
+	return runtimeInvokeWithRetCls(retCls, method, obj, std::move(params), catchExceptions);
 }
 
 

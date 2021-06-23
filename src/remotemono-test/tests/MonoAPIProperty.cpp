@@ -69,6 +69,11 @@ TEST(MonoAPIPropertyTest, PropertyGetSet)
 
 	mono.propertySetValue(stringProp, obj, {mono.stringNew(mono.domainGet(), "A different test string")});
 	EXPECT_EQ(mono.stringToUTF8(mono.propertyGetValue(stringProp, obj)), std::string("A different test string"));
+
+	RMonoClassPtr propCls;
+	EXPECT_EQ(mono.stringToUTF8(mono.propertyGetValueWithRetCls(propCls, stringProp, obj)), std::string("A different test string"));
+
+	EXPECT_EQ(propCls, mono.getStringClass());
 }
 
 

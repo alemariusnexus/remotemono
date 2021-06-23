@@ -31,10 +31,13 @@ namespace remotemono
 
 RMonoObject RMonoMethod::invoke(RMonoVariantArray& args)
 {
+	assertValid();
+
+	RMonoClassPtr resCls;
 	RMonoObjectPtr res;
 
 	if (isStatic()) {
-		res = d->mono->runtimeInvoke(d->method, nullptr, args);
+		res = d->mono->runtimeInvokeWithRetCls(resCls, d->method, nullptr, args);
 	} else {
 		if (!isInstanced()) {
 			throw RMonoException("Method is non-static but RMonoMethod object is non-instanced.");
@@ -42,10 +45,10 @@ RMonoObject RMonoMethod::invoke(RMonoVariantArray& args)
 		if (!id->obj) {
 			throw RMonoException("Method is non-static but instance is invalid.");
 		}
-		res = d->mono->runtimeInvoke(d->method, id->obj, args);
+		res = d->mono->runtimeInvokeWithRetCls(resCls, d->method, id->obj, args);
 	}
 
-	return RMonoObject(d->ctx, res);
+	return RMonoObject(d->ctx, res, d->ctx->getCachedClass(resCls));
 }
 
 

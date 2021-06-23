@@ -292,6 +292,11 @@ public class InvokeTest
 		}
 	}
 	
+	public static string GiveMeAString()
+	{
+		return "AString";
+	}
+	
 }
 
 

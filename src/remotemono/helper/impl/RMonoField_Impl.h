@@ -31,8 +31,12 @@ namespace remotemono
 
 RMonoObject RMonoField::getBoxed()
 {
+	assertValid();
+
+	RMonoClassPtr resCls;
 	if (isStatic()) {
-		return RMonoObject(d->ctx, d->mono->fieldGetValueObject(d->field, RMonoObjectPtr()));
+		auto res = d->mono->fieldGetValueObjectWithRetCls(resCls, d->field, RMonoObjectPtr());
+		return RMonoObject(d->ctx, res, d->ctx->getCachedClass(resCls));
 	} else {
 		if (!isInstanced()) {
 			throw RMonoException("Field is non-static but RMonoField object is non-instanced.");
@@ -40,7 +44,8 @@ RMonoObject RMonoField::getBoxed()
 		if (!id->obj) {
 			throw RMonoException("Field is non-static but instance is invalid.");
 		}
-		return RMonoObject(d->ctx, d->mono->fieldGetValueObject(d->field, id->obj));
+		auto res = d->mono->fieldGetValueObjectWithRetCls(resCls, d->field, id->obj);
+		return RMonoObject(d->ctx, res, d->ctx->getCachedClass(resCls));
 	}
 }
 

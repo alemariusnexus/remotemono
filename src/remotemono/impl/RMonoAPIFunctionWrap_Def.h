@@ -312,6 +312,7 @@ private:
 	void genGchandleNewChecked(AsmBuildContext& ctx);
 	void genIsValueTypeInstance(AsmBuildContext& ctx);
 	void genObjectUnbox(AsmBuildContext& ctx);
+	void genObjectGetClass(AsmBuildContext& ctx);
 
 	template <size_t argIdx, typename ArgsTupleT>
 	constexpr size_t calcStackArgOffset()

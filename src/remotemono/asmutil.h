@@ -199,5 +199,43 @@ inline void AsmGenObjectUnbox (
 }
 
 
+inline void AsmGenObjectGetClass (
+		backend::RMonoAsmHelper& a,
+		rmono_funcp objectGetClassAddr,
+		bool x64
+) {
+	// IRMonoClassPtr object_get_class(IRMonoObjectPtrRaw obj)
+	//
+	//		obj: zcx
+
+	using namespace asmjit;
+	using namespace asmjit::host;
+
+	auto lSkip = a->newLabel();
+
+	//	zax = nullptr;
+	a->xor_(a->zax, a->zax);
+
+	//	if (obj != nullptr) {
+		a->jecxz(a->zcx, lSkip);
+
+	//		zax = mono_object_get_class(obj);
+			if (x64) {
+				a->sub(a->zsp, 32);
+				a->mov(a->zax, objectGetClassAddr);
+				a->call(a->zax);
+				a->add(a->zsp, 32);
+			} else {
+				a->push(a->zcx);
+				a->mov(a->zax, objectGetClassAddr);
+				a->call(a->zax);
+				a->add(a->zsp, sizeof(uint32_t));
+			}
+
+	//	}
+		a->bind(lSkip);
+}
+
+
 
 }

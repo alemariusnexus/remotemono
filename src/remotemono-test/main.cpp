@@ -102,6 +102,8 @@ void RunBenchmark()
 
 
 	uint32_t numRawRPCPerSec = 0;
+	uint32_t numAWRCyclesPerSec = 0;
+	uint32_t numWRCyclesPerSec = 0;
 	uint32_t numMonoRPCPerSec = 0;
 	uint32_t numRInvokePerSec = 0;
 
@@ -130,6 +132,51 @@ void RunBenchmark()
 		numRawRPCPerSec = (uint32_t) (numCalls / (duration / (double) 1000));
 	}
 #endif
+
+	Sleep(250);
+
+	{
+		const char* testdata = "Just some data that should be read back from the remote";
+		size_t testdataLen = strlen(testdata);
+
+		char readbackBuf[256];
+
+		uint32_t s = GetTickCount();
+		uint64_t numCycles = 0;
+
+		while ((t = GetTickCount()) - s < duration) {
+			backend::RMonoMemBlock block = std::move(backend::RMonoMemBlock::alloc(&proc, testdataLen+1));
+			block.write(0, testdataLen+1, testdata);
+			block.read(0, testdataLen+1, readbackBuf);
+
+			numCycles++;
+		}
+
+		numAWRCyclesPerSec = (uint32_t) (numCycles / (duration / (double) 1000));
+	}
+
+	Sleep(250);
+
+	{
+		const char* testdata = "Just some data that should be read back from the remote";
+		size_t testdataLen = strlen(testdata);
+
+		char readbackBuf[256];
+
+		backend::RMonoMemBlock block = std::move(backend::RMonoMemBlock::alloc(&proc, testdataLen+1));
+
+		uint32_t s = GetTickCount();
+		uint64_t numCycles = 0;
+
+		while ((t = GetTickCount()) - s < duration) {
+			block.write(0, testdataLen+1, testdata);
+			block.read(0, testdataLen+1, readbackBuf);
+
+			numCycles++;
+		}
+
+		numWRCyclesPerSec = (uint32_t) (numCycles / (duration / (double) 1000));
+	}
 
 	Sleep(250);
 
@@ -167,9 +214,11 @@ void RunBenchmark()
 
 
 	RMonoLogInfo("**********");
-	RMonoLogInfo("Raw RPCs / second:  %u", numRawRPCPerSec);
-	RMonoLogInfo("Mono RPCs / second: %u", numMonoRPCPerSec);
-	RMonoLogInfo("RInvoke / second: %u", numRInvokePerSec);
+	RMonoLogInfo("Raw RPCs / second:    %u", numRawRPCPerSec);
+	RMonoLogInfo("AWR Cycles / second:  %u", numAWRCyclesPerSec);
+	RMonoLogInfo("WR Cycles / second:   %u", numWRCyclesPerSec);
+	RMonoLogInfo("Mono RPCs / second:   %u", numMonoRPCPerSec);
+	RMonoLogInfo("RInvoke / second:     %u", numRInvokePerSec);
 	RMonoLogInfo("**********");
 }
 

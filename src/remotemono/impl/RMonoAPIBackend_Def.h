@@ -94,6 +94,7 @@ private:
 	template <typename TypeT> using ParamInOut = tags::ParamInOut<TypeT>;
 	template <typename TypeT> using ParamOvwrInOut = tags::ParamOvwrInOut<TypeT>;
 	template <typename TypeT> using ParamException = tags::ParamException<TypeT>;
+	template <typename TypeT> using ParamOutRetCls = tags::ParamOutRetCls<TypeT>;
 	template <typename TypeT> using ReturnOwn = tags::ReturnOwn<TypeT>;
 
 	using string = std::string;
@@ -231,7 +232,8 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 1)
 	REMOTEMONO_API(	field_get_type,					false,	IRMonoTypePtr,				IRMonoClassFieldPtr											)
 	REMOTEMONO_API(	field_set_value,				false,	void,						IRMonoObjectPtr, IRMonoClassFieldPtr, Variant				)
 	REMOTEMONO_API(	field_get_value,				false,	void,						IRMonoObjectPtr, IRMonoClassFieldPtr, ParamOut<Variant>		)
-	REMOTEMONO_API(	field_get_value_object,			false,	IRMonoObjectPtr,			IRMonoDomainPtr, IRMonoClassFieldPtr, IRMonoObjectPtr		)
+	REMOTEMONO_API(	field_get_value_object,			false,	IRMonoObjectPtr,			IRMonoDomainPtr, IRMonoClassFieldPtr, IRMonoObjectPtr,
+																						ParamOutRetCls<IRMonoClassPtr>								)
 	REMOTEMONO_API(	field_static_set_value,			false,	void,						IRMonoVTablePtr, IRMonoClassFieldPtr, Variant				)
 	REMOTEMONO_API(	field_static_get_value,			false,	void,						IRMonoVTablePtr, IRMonoClassFieldPtr, ParamOut<Variant>		)
 	REMOTEMONO_API(	field_get_offset,				false,	uint32_t,					IRMonoClassFieldPtr											)
@@ -261,7 +263,8 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 	REMOTEMONO_API(	property_get_get_method,		false,	IRMonoMethodPtr,			IRMonoPropertyPtr											)
 	REMOTEMONO_API(	property_get_value,				false,	IRMonoObjectPtr,			IRMonoPropertyPtr, RMonoVariant,
 																						ParamOvwrInOut<ParamOut<VariantArray>>,
-																						ParamException<IRMonoExceptionPtr>							)
+																						ParamException<IRMonoExceptionPtr>,
+																						ParamOutRetCls<IRMonoClassPtr>								)
 	REMOTEMONO_API(	property_set_value,				false,	void,						IRMonoPropertyPtr, RMonoVariant,
 																						ParamOvwrInOut<VariantArray>,
 																						ParamException<IRMonoExceptionPtr>							)
@@ -315,7 +318,8 @@ REMOTEMONO_API_PART_BEGIN(MonoAPI, 2)
 
 	REMOTEMONO_API(	runtime_invoke,					false,	IRMonoObjectPtr,			IRMonoMethodPtr, Variant,
 																						ParamOvwrInOut<VariantArray>,
-																						ParamException<IRMonoExceptionPtr>							)
+																						ParamException<IRMonoExceptionPtr>,
+																						ParamOutRetCls<IRMonoClassPtr>								)
 
 	REMOTEMONO_API(	compile_method,					false,	irmono_voidp,				IRMonoMethodPtr												)
 

@@ -98,7 +98,29 @@ class RMonoAPIFunctionRawAdapterFinal : public RMonoAPIFunctionRawBase <
 
 
 template <typename Enable, typename CommonT, typename ABI, typename RetT, typename... ArgsT>
-class RMonoAPIFunctionRawAdapter : public RMonoAPIFunctionRawAdapterFinal<CommonT, ABI, RetT, ArgsT...> {};
+class RMonoAPIFunctionRawAdapterRemoveOutRetCls;
+
+// Remove parameters tagged with ParamOutRetCls (they are only used with wrapper & API functions)
+template <typename CommonT, typename ABI, typename RetT, typename ArgT, typename... ArgsT>
+class RMonoAPIFunctionRawAdapterRemoveOutRetCls <
+		std::enable_if_t<tags::has_param_tag_v<ArgT, tags::ParamOutRetClsTag>>,
+		CommonT, ABI, RetT, ArgT, ArgsT...
+	> : public RMonoAPIFunctionRawAdapterFinal<CommonT, ABI, RetT, ArgsT...> {};
+
+template <typename CommonT, typename ABI, typename RetT, typename ArgT, typename... ArgsT>
+class RMonoAPIFunctionRawAdapterRemoveOutRetCls <
+		std::enable_if_t<!tags::has_param_tag_v<ArgT, tags::ParamOutRetClsTag>>,
+		CommonT, ABI, RetT, ArgT, ArgsT...
+	> : public RMonoAPIFunctionRawAdapterFinal<CommonT, ABI, RetT, ArgT, ArgsT...> {};
+
+template <typename CommonT, typename ABI, typename RetT>
+class RMonoAPIFunctionRawAdapterRemoveOutRetCls <
+		void, CommonT, ABI, RetT
+	> : public RMonoAPIFunctionRawAdapterFinal<CommonT, ABI, RetT> {};
+
+
+template <typename Enable, typename CommonT, typename ABI, typename RetT, typename... ArgsT>
+class RMonoAPIFunctionRawAdapter : public RMonoAPIFunctionRawAdapterRemoveOutRetCls<void, CommonT, ABI, RetT, ArgsT...> {};
 
 
 

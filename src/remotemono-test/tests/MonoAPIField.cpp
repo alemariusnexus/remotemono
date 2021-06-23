@@ -132,6 +132,10 @@ TEST(MonoAPIFieldTest, FieldValueReferenceType)
 	mono.fieldSetValue(nullptr, staticStringField, mono.stringNew(mono.domainGet(), "jumps over the lazy god"));
 	EXPECT_EQ(mono.stringToUTF8(mono.fieldGetValue<RMonoStringPtr>(nullptr, staticStringField)), std::string("jumps over the lazy god"));
 
+	RMonoClassPtr fieldCls;
+	EXPECT_EQ(mono.stringToUTF8(mono.fieldGetValueObjectWithRetCls(fieldCls, staticStringField)), std::string("jumps over the lazy god"));
+	EXPECT_EQ(fieldCls, mono.getStringClass());
+
 
 
 	// ********** INSTANCE FIELDS **********
