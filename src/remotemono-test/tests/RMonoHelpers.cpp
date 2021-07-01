@@ -246,6 +246,43 @@ TEST(RMonoHelpersTest, ObjectInOutTest)
 }
 
 
+TEST(RMonoHelpersTest, ArrayTest)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+	RMonoHelperContext* hc = &System::getInstance().getMonoHelperContext();
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+	auto i32Cls = mono.getInt32Class();
+
+	{
+		auto arrPtr = mono.arrayFromVector<int32_t>(i32Cls, {10, 20, 30, 40, 50, 60});
+		EXPECT_EQ(mono.arrayLength(arrPtr), 6);
+		EXPECT_EQ(mono.arrayAsVector<int32_t>(arrPtr), std::vector<int32_t>({10, 20, 30, 40, 50, 60}));
+
+		RMonoObject arr(hc, arrPtr);
+		EXPECT_EQ(arr.arrayAsVector<int32_t>(), std::vector<int32_t>({10, 20, 30, 40, 50, 60}));
+	}
+
+	{
+		auto arrPtr = mono.arrayFromVector<RMonoStringPtr>(mono.getStringClass(), {
+				mono.stringNew("This"),
+				mono.stringNew("is"),
+				mono.stringNew("a"),
+				mono.stringNew("test")
+		});
+		RMonoObject arr(hc, arrPtr);
+		auto arrVec = arr.arrayAsVector();
+
+		EXPECT_EQ(mono.stringToUTF8(arrVec[0]), std::string("This"));
+		EXPECT_EQ(mono.stringToUTF8(arrVec[1]), std::string("is"));
+		EXPECT_EQ(mono.stringToUTF8(arrVec[2]), std::string("a"));
+		EXPECT_EQ(mono.stringToUTF8(arrVec[3]), std::string("test"));
+	}
+}
+
+
 TEST(RMonoHelpersTest, FieldFromClassTest)
 {
 	RMonoAPI& mono = System::getInstance().getMono();

@@ -74,9 +74,9 @@ public:
 	 */
 	void reset()
 	{
-		resetRaw();
-		resetWrap();
-		resetAPI();
+		this->resetRaw();
+		this->resetWrap();
+		this->resetAPI();
 
 		abi = nullptr;
 		mono = nullptr;
@@ -154,7 +154,7 @@ public:
 	/**
 	 * Determine if the function is valid, i.e. if at least a valid remote raw function address was provided with init().
 	 */
-	operator bool() const { return (bool) rawFunc; }
+	operator bool() const { return (bool) this->rawFunc; }
 
 private:
 	template <typename ArgsTupleT, size_t argIdx>

@@ -109,7 +109,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::generateWrapperAsm(AsmB
 	rmono_funcp rawFuncAddr = static_cast<CommonT*>(this)->getRawFuncAddress();
 
 
-	Label& lFuncRet = a->newLabel();
+	Label lFuncRet = a->newLabel();
 
 	ctx.x64 = (sizeof(irmono_voidp) == 8);
 	ctx.regSize = sizeof(irmono_voidp);
@@ -363,7 +363,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperReserveArgSta
 				a->movzx(a->zcx, ptr(a->zcx, - (int32_t) sizeof(variantflags_t), sizeof(variantflags_t)));
 
 		//		if ((flags & ParamFlagMonoObjectPtr) != 0) {
-				a->test(a->zcx, ParamFlagMonoObjectPtr);
+				a->test(a->zcx, Self::ParamFlagMonoObjectPtr);
 				a->jz(lReserveEnd);
 
 		//			__dynstack IRMonoObjectPtrRaw variantDummyPtr;
@@ -495,7 +495,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 				a->movzx(a->zsi, ptr(a->zcx, - (int32_t) sizeof(variantflags_t), sizeof(variantflags_t)));
 
 		//		if ((flags & ParamFlagMonoObjectPtr) != 0) {
-				a->test(a->zsi, ParamFlagMonoObjectPtr);
+				a->test(a->zsi, Self::ParamFlagMonoObjectPtr);
 				a->jz(lNotMonoObjectPtr);
 
 		//			irmono_gchandle gchandle = *((irmono_gchandle*) wrapArgs[wrapArgIdx]);
@@ -511,7 +511,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 					a->mov(ptr(a->zbx), a->zdi);
 
 		//			if ((flags & ParamFlagDisableAutoUnbox)  ==  0  &&  is_value_type_instance(objPtr)) {
-					a->test(a->zsi, ParamFlagDisableAutoUnbox);
+					a->test(a->zsi, Self::ParamFlagDisableAutoUnbox);
 					a->jnz(lNoAutoUnbox);
 					a->mov(a->zcx, a->zdi);
 					genIsValueTypeInstance(ctx);
@@ -530,7 +530,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 					a->bind(lNoAutoUnbox);
 
 		//				if ((flags & ParamFlagOut) != 0) {
-						a->test(a->zsi, ParamFlagOut);
+						a->test(a->zsi, Self::ParamFlagOut);
 						a->jz(lMonoObjectPtrNotOut);
 
 		//					rawArgs[rawArgIdx] = &variantDummyPtr;
@@ -550,7 +550,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 				a->jmp(lBuildEnd);
 		//		} else if ((flags & ParamFlagDirectPtr) != 0) {
 				a->bind(lNotMonoObjectPtr);
-				a->test(a->zsi, ParamFlagDirectPtr);
+				a->test(a->zsi, Self::ParamFlagDirectPtr);
 				a->jz(lNotDirectPtr);
 
 		//			rawArgs[rawArgIdx] = *((irmono_voidp*) wrapArgs[wrapArgIdx]);
@@ -636,7 +636,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 					a->je(lLoopFinal);
 
 		//				if (((*flagsPtr) & ParamFlagMonoObjectPtr) != 0) {
-						a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagMonoObjectPtr);
+						a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), Self::ParamFlagMonoObjectPtr);
 						a->jz(lNotMonoObjectPtr);
 
 		//					irmono_gchandle gchandle = *((irmono_gchandle*) *arrEntryPtr);
@@ -649,7 +649,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 							a->mov(ptr(a->zbx), a->zax);
 
 		//					if (((*flagsPtr) & ParamFlagOut) != 0) {
-							a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagOut);
+							a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), Self::ParamFlagOut);
 							a->jz(lNotOut);
 
 		//						variantArrStackData[i].origArrPtr = *arrEntryPtr;
@@ -666,7 +666,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 							a->mov(ptr(a->zsi), a->zax);
 
 		//					if (((*flagsPtr) & ParamFlagDisableAutoUnbox)  ==  0  &&  is_value_type_instance(objPtr)) {
-							a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagDisableAutoUnbox);
+							a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), Self::ParamFlagDisableAutoUnbox);
 							a->jnz(lNoAutoUnbox);
 							a->mov(a->zcx, a->zax);
 							genIsValueTypeInstance(ctx);
@@ -686,7 +686,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 							a->bind(lNoAutoUnbox);
 
 		//						if (((*flagsPtr) & ParamFlagOut) != 0) {
-								a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagOut);
+								a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), Self::ParamFlagOut);
 								a->jz(lNoAutoUnboxNotOut);
 
 		//							*arrEntryPtr = &variantArrStackData[i].objPtr;
@@ -700,7 +700,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 						a->jmp(lLoopFinal);
 		//				} else if (((*flagsPtr) & ParamFlagDirectPtr) != 0) {
 						a->bind(lNotMonoObjectPtr);
-						a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), ParamFlagDirectPtr);
+						a->test(ptr(a->zdi, 0, sizeof(variantflags_t)), Self::ParamFlagDirectPtr);
 						a->jz(lLoopFinal);
 
 		//					*arrEntryPtr = *((irmono_voidp*) *arrEntryPtr);
@@ -719,7 +719,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperBuildRawArg (
 		//		} while (((*flagsPtr++) & ParamFlagLastArrayElement)  ==  0);
 				a->mov(a->zcx, ptr(a->zdi, 0, sizeof(variantflags_t)));
 				a->add(a->zdi, sizeof(variantflags_t));
-				a->test(a->zcx, ParamFlagLastArrayElement);
+				a->test(a->zcx, Self::ParamFlagLastArrayElement);
 				a->jz(lLoopStart);
 				a->bind(lLoopEnd);
 
@@ -857,7 +857,7 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleRetAndO
 			a->mov(a->zcx, ptrWrapFuncArg<0>(ctx));
 
 		//	if ((flags & ParamFlagMonoObjectPtr) != 0) {
-			a->test(a->zcx, ParamFlagMonoObjectPtr);
+			a->test(a->zcx, Self::ParamFlagMonoObjectPtr);
 			a->jz(lHandleEnd);
 
 		//		IRMonoObjectPtrRaw rawObj = *((IRMonoObjectPtrRaw*) rawRetval);
@@ -1005,14 +1005,14 @@ void RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...>::genWrapperHandleOutPara
 				a->movzx(a->zcx, ptr(a->zdi, - (int32_t) sizeof(variantflags_t), sizeof(variantflags_t)));
 
 		//		if ((flags & ParamFlagMonoObjectPtr) != 0) {
-				a->test(a->zcx, ParamFlagMonoObjectPtr);
+				a->test(a->zcx, Self::ParamFlagMonoObjectPtr);
 				a->jz(lHandleEnd);
 
 		//			curDynStackPtr -= sizeof(IRMonoObjectPtrRaw);
 					a->sub(a->zbx, sizeof(IRMonoObjectPtrRaw));
 
 		//			if ((flags & ParamFlagOut) != 0) {
-					a->test(a->zcx, ParamFlagOut);
+					a->test(a->zcx, Self::ParamFlagOut);
 					a->jz(lHandleEnd);
 
 						if constexpr (

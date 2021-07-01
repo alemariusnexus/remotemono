@@ -31,9 +31,16 @@
 namespace remotemono
 {
 
+RMonoHelperContext::~RMonoHelperContext()
+{
+	delete classesByPtr;
+}
+
 
 void RMonoHelperContext::init()
 {
+	classesByPtr = new std::unordered_map<RMonoClassPtr, RMonoClass>;
+
 	clsObject = nullptr;
 	clsInt16 = nullptr;
 	clsInt32 = nullptr;
@@ -67,13 +74,13 @@ void RMonoHelperContext::setExtendedVerificationEnabled(bool enabled)
 
 RMonoClass RMonoHelperContext::getCachedClass(RMonoClassPtr cls)
 {
-	auto it = classesByPtr.find(cls);
-	if (it != classesByPtr.end()) {
+	auto it = classesByPtr->find(cls);
+	if (it != classesByPtr->end()) {
 		return it->second;
 	}
 
 	RMonoClass c(this, cls);
-	classesByPtr.insert(std::pair<RMonoClassPtr, RMonoClass>(cls, c));
+	classesByPtr->insert(std::pair<RMonoClassPtr, RMonoClass>(cls, c));
 	return c;
 }
 

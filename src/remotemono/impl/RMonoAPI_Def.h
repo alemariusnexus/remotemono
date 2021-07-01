@@ -197,6 +197,7 @@ public:
 	inline RMonoClassPtr					getSByteClass();
 	inline RMonoClassPtr					getCharClass();
 	inline RMonoClassPtr					getExceptionClass();
+	inline RMonoClassPtr					getEnumClass();
 	///@}
 
 	///@name Mono API - Classes
@@ -340,6 +341,8 @@ public:
 	inline RMonoVariant						objectUnboxRaw(RMonoObjectPtr obj);
 	inline RMonoObjectPtr					valueBox(RMonoDomainPtr domain, RMonoClassPtr cls, const RMonoVariant& val);
 	inline RMonoObjectPtr					valueBox(RMonoClassPtr cls, const RMonoVariant& val);
+	template <typename T>
+	inline RMonoObjectPtr					valueBox(const T& value);
 	inline RMonoStringPtr					objectToString(const RMonoVariant& obj, bool catchExceptions = true);
 	inline RMonoObjectPtr					objectClone(RMonoObjectPtr obj);
 	inline RMonoDomainPtr					objectGetDomain(RMonoObjectPtr obj);
@@ -462,6 +465,17 @@ public:
 	 */
 	template <typename T>
 		RMonoArrayPtr						arrayFromVector(RMonoClassPtr cls, const std::vector<T>& vec);
+
+	inline std::vector<std::string>			enumGetNames(RMonoClassPtr cls);
+
+	template <typename T = int32_t>
+	inline std::vector<T>					enumGetValues(RMonoClassPtr cls);
+
+	template <typename T = int32_t>
+	inline T								enumValueByName(RMonoClassPtr cls, const std::string_view& name, bool ignoreCase = false);
+
+	/*template <typename T = int32_t>
+	inline std::string						enumNameByValue(RMonoClassPtr cls, T value);*/
 
 	/**
 	 * Return a new GC handle for the same raw pointer as the parameter, but in its pinned version (see mono_gchandle_new()).

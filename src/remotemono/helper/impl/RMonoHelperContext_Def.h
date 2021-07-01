@@ -48,10 +48,11 @@ public:
 	{
 		init();
 	}
+	inline ~RMonoHelperContext();
 
 	RMonoAPI* getMonoAPI() const { return mono; }
 
-	void setExtendedVerificationEnabled(bool enabled);
+	inline void setExtendedVerificationEnabled(bool enabled);
 	bool isExtendedVerificationEnabled() const { return (flags & FlagEnableExtendedVerification) != 0; }
 
 	inline RMonoClass getCachedClass(RMonoClassPtr cls);
@@ -71,7 +72,7 @@ private:
 
 	int flags;
 
-	std::unordered_map<RMonoClassPtr, RMonoClass> classesByPtr;
+	std::unordered_map<RMonoClassPtr, RMonoClass>* classesByPtr;
 
 	RMonoClass* clsObject;
 	RMonoClass* clsInt16;

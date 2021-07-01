@@ -130,6 +130,13 @@ public:
 
 	bool instanceof(const RMonoClassPtr cls) const { assertValid(); return d->mono->objectIsInst(d->obj, cls); }
 
+	// TODO: Add more array methods
+	template <typename T = RMonoObject>
+	std::vector<T> arrayAsVector() const;
+
+	inline RMonoObject pin() const;
+	RMonoObjectPtrRaw raw() const { return d ? d->obj.raw() : (RMonoObjectPtrRaw) 0; }
+
 private:
 	void assertValid() const
 	{

@@ -262,16 +262,16 @@ private:
 		variantflags_t flags = 0;
 
 		if (v.getType() == Variant::TypeMonoObjectPtr) {
-			flags |= ParamFlagMonoObjectPtr;
+			flags |= Self::ParamFlagMonoObjectPtr;
 		} else if (v.getType() == Variant::TypeRawPtr) {
-			flags |= ParamFlagDirectPtr;
+			flags |= Self::ParamFlagDirectPtr;
 		}
 
 		if (out) {
-			flags |= ParamFlagOut;
+			flags |= Self::ParamFlagOut;
 		}
 		if (!v.isAutoUnboxEnabled()) {
-			flags |= ParamFlagDisableAutoUnbox;
+			flags |= Self::ParamFlagDisableAutoUnbox;
 		}
 
 		return flags;

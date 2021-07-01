@@ -39,9 +39,7 @@ template <typename R, typename... Args>
 class RemoteFunctionFastcall<R (__fastcall*)(Args...)> : public backend::RMonoRPCFunc<backend::CallConvFastcall, R, Args...>
 {
 public:
-	using RMonoRPCFunc::RMonoRPCFunc;
-
-	RemoteFunctionFastcall(backend::RMonoProcess* process, rmono_funcp fptr) : RMonoRPCFunc(process, fptr) {}
+	RemoteFunctionFastcall(backend::RMonoProcess* process, rmono_funcp fptr) : backend::RMonoRPCFunc<backend::CallConvFastcall, R, Args...>(process, fptr) {}
 };
 
 

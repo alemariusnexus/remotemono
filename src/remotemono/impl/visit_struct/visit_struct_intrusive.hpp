@@ -97,7 +97,7 @@ struct Rank : Rank<N - 1> {};
 template <>
 struct Rank<0> {};
 
-static VISIT_STRUCT_CONSTEXPR const int max_visitable_members_intrusive = 100;
+static VISIT_STRUCT_CONSTEXPR const int max_visitable_members_intrusive = 200;
 
 /***
  * To create a "compile-time" TypeList whose members are accumulated one-by-one,

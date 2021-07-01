@@ -104,7 +104,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, backend::RMonoProcess& proc
 		} else {
 			RMonoLogDebug("API function not found in remote process: %s", exportName.data());
 			func.initInvalid(exportName);
-			if constexpr (func.isRequired()) {
+			if (func.isRequired()) {
 				throw std::runtime_error(std::string("Required export not found in mono.dll: ").append(exportName));
 			}
 		}
@@ -117,7 +117,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, backend::RMonoProcess& proc
 		} else {
 			RMonoLogDebug("API function not found in remote process: %s", name);
 			func.initInvalid(name);
-			if constexpr (func.isRequired()) {
+			if (func.isRequired()) {
 				throw std::runtime_error(std::string("Required export not found in mono.dll: ").append(name));
 			}
 		}
@@ -134,8 +134,8 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, backend::RMonoProcess& proc
 	{
 		asmjit::Label startLabel;
 		asmjit::Label endLabel;
-		intptr_t offset;
-		size_t size;
+		intptr_t offset = 0;
+		size_t size = 0;
 	};
 
 	std::map<std::string, APIWrapperInfo> monoAPIWrapperInfo;
@@ -253,7 +253,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, backend::RMonoProcess& proc
 
 			func.link(*remDataBlock + monoAPIWrapperCodeOffs + info.offset);
 
-			if constexpr (func.needsWrapFunc()) {
+			if (func.needsWrapFunc()) {
 				RMonoLogDebug("Wrapper for '%s' is at %llX (size: %llu)", func.getName().data(),
 						(long long unsigned) (*remDataBlock + monoAPIWrapperCodeOffs + info.offset), (long long unsigned) info.size);
 			} else {
@@ -268,7 +268,7 @@ void RMonoAPIBackend<ABI>::injectAPI(RMonoAPI* mono, backend::RMonoProcess& proc
 
 			func.link(*remDataBlock + miscAPIWrapperCodeOffs + info.offset);
 
-			if constexpr (func.needsWrapFunc()) {
+			if (func.needsWrapFunc()) {
 				RMonoLogDebug("Wrapper for '%s' is at %llX (size: %llu)", func.getName().data(),
 						(long long unsigned) (*remDataBlock + miscAPIWrapperCodeOffs + info.offset), (long long unsigned) info.size);
 			} else {
@@ -406,7 +406,7 @@ void RMonoAPIBackend<ABI>::flushGchandleFreeBuffer()
 	if (gchandleFreeBufCount == 0) {
 		return;
 	} else if (gchandleFreeBufCount == 1) {
-		gchandle_free(gchandleFreeBuf[0]);
+		this->gchandle_free(gchandleFreeBuf[0]);
 		gchandleFreeBufCount = 0;
 		return;
 	}
@@ -414,7 +414,7 @@ void RMonoAPIBackend<ABI>::flushGchandleFreeBuffer()
 	backend::RMonoMemBlock arr = std::move(backend::RMonoMemBlock::alloc(process, gchandleFreeBufCount*sizeof(irmono_gchandle)));
 	arr.write(0, gchandleFreeBufCount*sizeof(irmono_gchandle), gchandleFreeBuf);
 
-	rmono_gchandle_free_multi (
+	this->rmono_gchandle_free_multi (
 			abi->p2i_rmono_voidp(*arr),
 			abi->p2i_rmono_voidp(*arr + gchandleFreeBufCount*sizeof(irmono_gchandle))
 			);
@@ -429,10 +429,10 @@ void RMonoAPIBackend<ABI>::flushRawFreeBuffer()
 	if (rawFreeBufCount == 0) {
 		return;
 	} else if (rawFreeBufCount == 1) {
-		if (free) {
-			free(rawFreeBuf[0]);
-		} else if (g_free) {
-			g_free(rawFreeBuf[0]);
+		if (this->free) {
+			this->free(rawFreeBuf[0]);
+		} else if (this->g_free) {
+			this->g_free(rawFreeBuf[0]);
 		} else {
 			throw RMonoException("No remote free() function found for flushRawFreeBuffer()");
 		}
@@ -443,7 +443,7 @@ void RMonoAPIBackend<ABI>::flushRawFreeBuffer()
 	backend::RMonoMemBlock arr = std::move(backend::RMonoMemBlock::alloc(process, rawFreeBufCount*sizeof(irmono_voidp)));
 	arr.write(0, rawFreeBufCount*sizeof(irmono_voidp), rawFreeBuf);
 
-	rmono_raw_free_multi (
+	this->rmono_raw_free_multi (
 			abi->p2i_rmono_voidp(*arr),
 			abi->p2i_rmono_voidp(*arr + rawFreeBufCount*sizeof(irmono_voidp))
 			);
@@ -513,7 +513,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 			a->push(a->zsp); // Aligns stack to 16 bytes
 
 			//	IRMonoObjectRawPtr rawObj = gchandle_get_target(unpinned);
-				a->mov(a->zax, gchandle_get_target.getRawFuncAddress());
+				a->mov(a->zax, this->gchandle_get_target.getRawFuncAddress());
 				a->sub(a->zsp, 32);
 				a->call(a->zax);
 				a->add(a->zsp, 32);
@@ -521,7 +521,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 			//	return gchandle_new(rawObj, true);
 				a->mov(a->zcx, a->zax);
 				a->mov(a->zdx, 1);
-				a->mov(a->zax, gchandle_new.getRawFuncAddress());
+				a->mov(a->zax, this->gchandle_new.getRawFuncAddress());
 				a->sub(a->zsp, 32);
 				a->call(a->zax);
 				a->add(a->zsp, 32);
@@ -530,14 +530,14 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 		} else {
 			//	IRMonoObjectRawPtr rawObj = gchandle_get_target(unpinned);
 				a->push(dword_ptr(a->zsp, 4));
-				a->mov(a->zax, gchandle_get_target.getRawFuncAddress());
+				a->mov(a->zax, this->gchandle_get_target.getRawFuncAddress());
 				a->call(a->zax);
 				a->add(a->zsp, 4);
 
 			//	return gchandle_new(rawObj, true);
 				a->push(1);
 				a->push(a->zax);
-				a->mov(a->zax, gchandle_new.getRawFuncAddress());
+				a->mov(a->zax, this->gchandle_new.getRawFuncAddress());
 				a->call(a->zax);
 				a->add(a->zsp, 8);
 		}
@@ -545,7 +545,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 		a->ret();
 	}
 
-	if (array_addr_with_size  &&  gc_wbarrier_set_arrayref) {
+	if (this->array_addr_with_size  &&  this->gc_wbarrier_set_arrayref) {
 		// __cdecl void rmono_array_setref(irmono_gchandle arr, irmono_uintptr_t idx, irmono_gchandle val);
 		a->bind(lArraySetref);
 		a->push(a->zbx);
@@ -563,12 +563,12 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 		}
 
 		//	IMonoArrayPtrRaw rawArr = mono_gchandle_get_target_checked(arr);
-			AsmGenGchandleGetTargetChecked(a, gchandle_get_target.getRawFuncAddress(), x64);
+			AsmGenGchandleGetTargetChecked(a, this->gchandle_get_target.getRawFuncAddress(), x64);
 			a->mov(a->zbx, a->zax);
 
 		//	IRMonoObjectPtrRaw rawVal = mono_gchandle_get_target_checked(val);
 			a->mov(a->zcx, a->zdi);
-			AsmGenGchandleGetTargetChecked(a, gchandle_get_target.getRawFuncAddress(), x64);
+			AsmGenGchandleGetTargetChecked(a, this->gchandle_get_target.getRawFuncAddress(), x64);
 			a->mov(a->zdi, a->zax);
 
 		//	IRMonoObjectPtrRaw* p = mono_array_addr_with_size(rawArr, sizeof(IRMonoObjectPtrRaw), idx);
@@ -576,7 +576,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				a->mov(a->zcx, a->zbx);
 				a->mov(a->zdx, sizeof(IRMonoObjectPtrRaw));
 				a->mov(asmjit::host::r8, a->zsi);
-				a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+				a->mov(a->zax, this->array_addr_with_size.getRawFuncAddress());
 				a->sub(a->zsp, 32);
 				a->call(a->zax);
 				a->add(a->zsp, 32);
@@ -584,7 +584,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				a->push(a->zsi);
 				a->push(sizeof(IRMonoObjectPtrRaw));
 				a->push(a->zbx);
-				a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+				a->mov(a->zax, this->array_addr_with_size.getRawFuncAddress());
 				a->call(a->zax);
 				a->add(a->zsp, 12);
 			}
@@ -595,7 +595,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				a->mov(a->zcx, a->zbx);
 				a->mov(a->zdx, a->zsi);
 				a->mov(asmjit::host::r8, a->zdi);
-				a->mov(a->zax, gc_wbarrier_set_arrayref.getRawFuncAddress());
+				a->mov(a->zax, this->gc_wbarrier_set_arrayref.getRawFuncAddress());
 				a->sub(a->zsp, 32);
 				a->call(a->zax);
 				a->add(a->zsp, 32);
@@ -603,7 +603,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				a->push(a->zdi);
 				a->push(a->zsi);
 				a->push(a->zbx);
-				a->mov(a->zax, gc_wbarrier_set_arrayref.getRawFuncAddress());
+				a->mov(a->zax, this->gc_wbarrier_set_arrayref.getRawFuncAddress());
 				a->call(a->zax);
 				a->add(a->zsp, 12);
 			}
@@ -651,7 +651,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 
 		//	IRMonoArrayHandleRaw rawArr = mono_gchandle_get_target_checked(arr);
 			a->mov(a->zcx, a->zsi);
-			AsmGenGchandleGetTargetChecked(a, gchandle_get_target.getRawFuncAddress(), x64);
+			AsmGenGchandleGetTargetChecked(a, this->gchandle_get_target.getRawFuncAddress(), x64);
 			a->mov(a->zsi, a->zax);
 
 			if (x64) {
@@ -675,7 +675,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 						a->mov(a->zcx, a->zsi);
 						a->mov(a->zdx, sizeof(IRMonoObjectPtrRaw));
 						a->mov(r8, a->zdi);
-						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->mov(a->zax, this->array_addr_with_size.getRawFuncAddress());
 						a->sub(a->zsp, 32);
 						a->call(a->zax);
 						a->add(a->zsp, 32);
@@ -683,14 +683,14 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 						a->push(a->zdi);
 						a->push(sizeof(IRMonoObjectPtrRaw));
 						a->push(a->zsi);
-						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->mov(a->zax, this->array_addr_with_size.getRawFuncAddress());
 						a->call(a->zax);
 						a->add(a->zsp, 12);
 					}
 
 		//			*outBuf = mono_gchandle_new_checked(*((IRMonoObjectPtrRaw*) elemPtr));
 					a->mov(a->zcx, ptr(a->zax));
-					AsmGenGchandleNewChecked(a, gchandle_new.getRawFuncAddress(), x64);
+					AsmGenGchandleNewChecked(a, this->gchandle_new.getRawFuncAddress(), x64);
 					a->mov(dword_ptr(a->zbx), eax);
 
 		//			outBuf += sizeof(irmono_gchandle);
@@ -716,7 +716,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 						a->mov(a->zcx, a->zsi);
 						a->mov(a->zdx, dword_ptr(a->zsp, 80));
 						a->mov(r8, a->zdi);
-						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->mov(a->zax, this->array_addr_with_size.getRawFuncAddress());
 						a->sub(a->zsp, 32);
 						a->call(a->zax);
 						a->add(a->zsp, 32);
@@ -725,7 +725,7 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 						a->push(a->zdi);
 						a->push(dword_ptr(a->zsp, 44));
 						a->push(a->zsi);
-						a->mov(a->zax, array_addr_with_size.getRawFuncAddress());
+						a->mov(a->zax, this->array_addr_with_size.getRawFuncAddress());
 						a->call(a->zax);
 						a->add(a->zsp, 12);
 						a->mov(a->zdx, ptr(a->zsp, 40)); // Restore elemSize
@@ -797,14 +797,14 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				if (x64) {
 					//	gchandle_free(*((irmono_gchandle*) beg));
 						a->mov(ecx, ptr(a->zbx));
-						a->mov(a->zax, gchandle_free.getRawFuncAddress());
+						a->mov(a->zax, this->gchandle_free.getRawFuncAddress());
 						a->sub(a->zsp, 32);
 						a->call(a->zax);
 						a->add(a->zsp, 32);
 				} else {
 					//	gchandle_free(*((irmono_gchandle*) beg));
 						a->push(dword_ptr(a->zbx));
-						a->mov(a->zax, gchandle_free.getRawFuncAddress());
+						a->mov(a->zax, this->gchandle_free.getRawFuncAddress());
 						a->call(a->zax);
 						a->add(a->zsp, 4);
 				}
@@ -846,10 +846,10 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				if (x64) {
 					//	free(*((irmono_voidp*) beg));
 						a->mov(a->zcx, ptr(a->zbx));
-						if (free) {
-							a->mov(a->zax, free.getRawFuncAddress());
-						} else if (g_free) {
-							a->mov(a->zax, g_free.getRawFuncAddress());
+						if (this->free) {
+							a->mov(a->zax, this->free.getRawFuncAddress());
+						} else if (this->g_free) {
+							a->mov(a->zax, this->g_free.getRawFuncAddress());
 						} else {
 							throw RMonoException("No remote free() function found for rmono_raw_free_multi()");
 						}
@@ -859,10 +859,10 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 				} else {
 					//	free(*((irmono_voidp*) beg));
 						a->push(dword_ptr(a->zbx));
-						if (free) {
-							a->mov(a->zax, free.getRawFuncAddress());
-						} else if (g_free) {
-							a->mov(a->zax, g_free.getRawFuncAddress());
+						if (this->free) {
+							a->mov(a->zax, this->free.getRawFuncAddress());
+						} else if (this->g_free) {
+							a->mov(a->zax, this->g_free.getRawFuncAddress());
 						} else {
 							throw RMonoException("No remote free() function found for rmono_raw_free_multi()");
 						}
@@ -885,22 +885,22 @@ std::string RMonoAPIBackend<ABI>::assembleBoilerplateCode()
 	std::string boilerplateCode((const char*) a->make(), a->getCodeSize());
 
 	if (a->isLabelBound(lForeachIPCVecAdapter)) {
-		rmono_foreach_ipcvec_adapter.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lForeachIPCVecAdapter)));
+		this->rmono_foreach_ipcvec_adapter.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lForeachIPCVecAdapter)));
 	}
 	if (a->isLabelBound(lGchandlePin)) {
-		rmono_gchandle_pin.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandlePin)));
+		this->rmono_gchandle_pin.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandlePin)));
 	}
 	if (a->isLabelBound(lArraySetref)) {
-		rmono_array_setref.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySetref)));
+		this->rmono_array_setref.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySetref)));
 	}
 	if (a->isLabelBound(lArraySlice)) {
-		rmono_array_slice.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySlice)));
+		this->rmono_array_slice.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lArraySlice)));
 	}
 	if (a->isLabelBound(lGchandleFreeMulti)) {
-		rmono_gchandle_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandleFreeMulti)));
+		this->rmono_gchandle_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lGchandleFreeMulti)));
 	}
 	if (a->isLabelBound(lRawFreeMulti)) {
-		rmono_raw_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lRawFreeMulti)));
+		this->rmono_raw_free_multi.rebuild(*process, static_cast<rmono_funcp>(a->getLabelOffset(lRawFreeMulti)));
 	}
 
 	return boilerplateCode;

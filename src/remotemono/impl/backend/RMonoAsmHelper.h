@@ -53,7 +53,7 @@ public:
 			size = argSize;
 			valImm64 = static_cast<uint64_t>(arg);
 		} else {
-			static_assert(false);
+			static_assert(std::is_integral_v<arg_t>);
 		}
 	}
 

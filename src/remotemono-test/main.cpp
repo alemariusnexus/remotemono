@@ -228,6 +228,8 @@ int main(int argc, char** argv)
 {
 	System& sys = System::getInstance();
 
+	TestBackend::init();
+
 	std::srand((int) std::time(0));
 
 	::testing::InitGoogleTest(&argc, argv);
@@ -277,6 +279,7 @@ int main(int argc, char** argv)
 			throw CLI::CallForHelp();
 		}
 	} catch (const CLI::Error& e) {
+		TestBackend::shutdown();
 		return app.exit(e);
 	}
 
@@ -366,12 +369,16 @@ int main(int argc, char** argv)
 			testBackend->terminateProcess();
 		}
 
+		TestBackend::shutdown();
+
 		return res;
 	} catch (TestEnvException& ex) {
 		RMonoLogError("Test environment exception: %s", ex.what());
+		TestBackend::shutdown();
 		return 1;
 	} catch (std::exception& ex) {
 		RMonoLogError("Caught unhandled exception: %s", ex.what());
+		TestBackend::shutdown();
 		return 1;
 	}
 

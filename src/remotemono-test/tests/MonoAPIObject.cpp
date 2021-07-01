@@ -71,3 +71,20 @@ TEST(MonoAPIObjectTest, ObjectVirtualCall)
 	auto virtualBaseCalculate = mono.objectGetVirtualMethod(derivedObj, baseCalculate);
 	EXPECT_EQ(mono.objectUnbox<int32_t>(mono.runtimeInvoke(virtualBaseCalculate, derivedObj, {5, 6})), 30);
 }
+
+
+TEST(MonoAPIObjectTest, ObjectBoxUnbox)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+
+	EXPECT_EQ(mono.objectUnbox<uint32_t>(mono.valueBox((uint32_t) 0x12345678)), 0x12345678);
+	EXPECT_EQ(mono.objectUnbox<int32_t>(mono.valueBox((int32_t) -2147483638)), -2147483638);
+	EXPECT_EQ(mono.objectUnbox<int8_t>(mono.valueBox((int8_t) -99)), -99);
+	EXPECT_EQ(mono.objectUnbox<uint64_t>(mono.valueBox((uint64_t) 0x1234567890ABCDEFllu)), 0x1234567890ABCDEFllu);
+	EXPECT_EQ(mono.objectUnbox<double>(mono.valueBox(3.1415926535897932384626433)), 3.1415926535897932384626433);
+	EXPECT_EQ(mono.objectUnbox<bool>(mono.valueBox(false)), false);
+	EXPECT_EQ(mono.objectUnbox<bool>(mono.valueBox(true)), true);
+
+	EXPECT_EQ(mono.getUInt32Class(), mono.objectGetClass(mono.valueBox((uint32_t) 0x12345678)));
+	EXPECT_EQ(mono.getSByteClass(), mono.objectGetClass(mono.valueBox((int8_t) 'X')));
+}

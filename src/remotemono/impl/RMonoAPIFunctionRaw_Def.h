@@ -145,7 +145,7 @@ class RMonoAPIFunctionRaw : public RMonoAPIFunctionRawAdapter<void, CommonT, ABI
 protected:
 	void resetRaw()
 	{
-		rawFunc.reset();
+		this->rawFunc.reset();
 	}
 };
 

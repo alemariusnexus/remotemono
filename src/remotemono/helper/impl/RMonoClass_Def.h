@@ -25,6 +25,7 @@
 #include <memory>
 #include <unordered_map>
 #include <tuple>
+#include <vector>
 #include "RMonoHelperContext_Def.h"
 #include "../../RMonoAPI.h"
 #include "../../util.h"
@@ -93,8 +94,8 @@ private:
 
 	struct Data
 	{
-		Data(RMonoHelperContext* ctx, RMonoClassPtr cls)
-				: ctx(ctx), mono(ctx->getMonoAPI()), cls(cls) {}
+		inline Data(RMonoHelperContext* ctx, RMonoClassPtr cls);
+		inline ~Data();
 
 		RMonoVTablePtr vtable() const
 		{
@@ -119,10 +120,10 @@ private:
 		RMonoAPI* mono;
 		RMonoClassPtr cls;
 
-		std::unordered_map<std::string, RMonoField> fieldsByName;
-		std::unordered_map<std::string, RMonoProperty> propsByName;
-		std::unordered_map<MethodNameWithParamCount, RMonoMethod, MethodNameWithParamCountHash> methodsByName;
-		std::unordered_map<MethodDesc, RMonoMethod, MethodDescHash> methodsByDesc;
+		std::unordered_map<std::string, RMonoField>* fieldsByName;
+		std::unordered_map<std::string, RMonoProperty>* propsByName;
+		std::unordered_map<MethodNameWithParamCount, RMonoMethod, MethodNameWithParamCountHash>* methodsByName;
+		std::unordered_map<MethodDesc, RMonoMethod, MethodDescHash>* methodsByDesc;
 
 		RMonoVTablePtr cachedVtable;
 		RMonoTypePtr cachedType;
@@ -164,11 +165,14 @@ public:
 	std::string getNamespace() const { assertValid(); return d->mono->classGetNamespace(d->cls); }
 
 	inline RMonoField field(const std::string& name) const;
+	inline std::vector<RMonoField> fields() const;
 
 	inline RMonoProperty property(const std::string& name) const;
+	inline std::vector<RMonoProperty> properties() const;
 
 	inline RMonoMethod method(const std::string& name, int32_t paramCount = -1) const;
 	inline RMonoMethod methodDesc(const std::string& desc, bool includeNamespace = false) const;
+	inline std::vector<RMonoMethod> methods() const;
 
 	inline RMonoObject allocObject();
 

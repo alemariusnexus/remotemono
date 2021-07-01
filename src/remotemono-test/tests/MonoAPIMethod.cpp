@@ -225,8 +225,6 @@ TEST(MonoAPIMethodTest, RuntimeInvokeValueType)
 
 TEST(MonoAPIMethodTest, RuntimeInvokeWithRetCls)
 {
-	char buf[256];
-
 	RMonoAPI& mono = System::getInstance().getMono();
 
 	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");

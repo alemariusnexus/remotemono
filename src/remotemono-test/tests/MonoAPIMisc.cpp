@@ -51,7 +51,8 @@ TEST(MonoAPIMiscTest, CompileMethodAndCallNative)
 		auto staticAdd3Func = blackbone::MakeRemoteFunction<int32_t (*)(int32_t, int32_t, int32_t)> (
 				**bbProc, (blackbone::ptr_t) staticAdd3Addr);
 
-		auto res = staticAdd3Func.Call(staticAdd3Func.MakeArguments(5, 7, -2), (**bbProc).remote().getWorker());
+		auto args = staticAdd3Func.MakeArguments(5, 7, -2);
+		auto res = staticAdd3Func.Call(args, (**bbProc).remote().getWorker());
 		ASSERT_TRUE((bool) res);
 
 		EXPECT_EQ(*res, 10);
@@ -179,4 +180,43 @@ TEST(MonoAPIMiscTest, GCLeakUnbuffered)
 	//EXPECT_EQ(mono.fieldGetValue<int32_t>(nullptr, fieldRefcount), 0);
 
 	mono.setFreeBufferMaxCount(8192);
+}
+
+
+TEST(MonoAPIMiscTest, EnumValues)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+	auto cls1 = mono.classFromName(img, "", "SomeSimpleEnum1");
+	auto cls2 = mono.classFromName(img, "", "SomeSimpleEnum2");
+	auto cls3 = mono.classFromName(img, "", "SimpleByteEnum");
+
+	EXPECT_EQ(mono.enumGetNames(cls1), std::vector<std::string>({"Never", "Gonna", "Give", "You", "Up"}));
+	EXPECT_EQ(mono.enumGetValues(cls1), std::vector<int32_t>({0, 1, 2, 3, 4}));
+
+	EXPECT_EQ(mono.enumGetNames(cls2), std::vector<std::string>({"Let", "Gonna", "You", "Never", "Down"}));
+	EXPECT_EQ(mono.enumGetValues(cls2), std::vector<int32_t>({9, 415, 2653, -31, -5}));
+
+	EXPECT_EQ(mono.enumGetNames(cls3), std::vector<std::string>({"Never", "Gonna", "Run", "Around", "And", "Desert", "You"}));
+	EXPECT_EQ(mono.enumGetValues<int8_t>(cls3), std::vector<int8_t>({1, 2, 3, 5, 8, 13, 21}));
+
+	EXPECT_EQ(mono.enumValueByName(cls1, "Give"), 2);
+	EXPECT_EQ(mono.enumValueByName(cls1, "gIvE", true), 2);
+	EXPECT_EQ(mono.enumValueByName(cls1, "Up"), 4);
+	EXPECT_EQ(mono.enumValueByName(cls2, "Never"), -31);
+	EXPECT_EQ(mono.enumValueByName<int8_t>(cls3, "And"), 8);
+	EXPECT_EQ(mono.enumValueByName<int8_t>(cls3, "GONNA", true), 2);
+
+	EXPECT_THROW(mono.enumValueByName<int8_t>(cls3, "GONNA"), RMonoRemoteException);
+
+	// TODO: Enable this once we finally figure out why enumNameByValue() throws an exception...
+	/*EXPECT_EQ(mono.enumNameByValue(cls1, (int32_t) 3), std::string("You"));
+	EXPECT_EQ(mono.enumNameByValue(cls2, 415), std::string("Gonna"));
+	EXPECT_EQ(mono.enumNameByValue(cls2, -5), std::string("Down"));
+	EXPECT_EQ(mono.enumNameByValue<uint8_t>(cls3, 3), std::string("Run"));
+
+	EXPECT_THROW(mono.enumNameByValue(cls1, "Let"), RMonoRemoteException);*/
 }

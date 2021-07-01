@@ -167,6 +167,8 @@ public:
 	RMonoReflectionTypePtr typeObject() const { assertValid(); return d->mono->typeGetObject(type()); }
 	uint32_t offset() const { assertValid(); return d->mono->fieldGetOffset(d->field); }
 
+	std::string name() const { assertValid(); return d->mono->fieldGetName(d->field); }
+
 private:
 	void assertValid() const
 	{

@@ -47,9 +47,9 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::invokeAPIInternal (
 		// Call the raw function directly
 		return std::apply([&](auto&... params) {
 			if constexpr(!std::is_same_v<CommonAPIRetType, void>) {
-				return convertRawCallRet(static_cast<CommonT*>(this)->invokeRaw(convertRawCallArg<ArgsT>(params)...));
+				return convertRawCallRet(static_cast<CommonT*>(this)->invokeRaw(this->convertRawCallArg<ArgsT>(params)...));
 			} else {
-				static_cast<CommonT*>(this)->invokeRaw(convertRawCallArg<ArgsT>(params)...);
+				static_cast<CommonT*>(this)->invokeRaw(this->convertRawCallArg<ArgsT>(params)...);
 			}
 		}, args);
 	} else {
@@ -588,7 +588,7 @@ RMonoAPIFunctionAPI<CommonT, ABI, RetT, ArgsT...>::handleInvokeStepArg (
 					if (i == numElems-1) {
 						// This is used by the wrapper function code to determine when to stop iterating without having to
 						// carry around a counter variable and a variable holding the number of elements (saves registers).
-						flagsPtr[i] |= ParamFlagLastArrayElement;
+						flagsPtr[i] |= Self::ParamFlagLastArrayElement;
 					}
 
 

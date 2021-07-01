@@ -567,7 +567,7 @@ public:
 	void updateFromRemoteMemory(ABI& abi, RMonoAPIBase& mono, void* buf);
 
 private:
-	explicit RMonoVariant::RMonoVariant(RMonoVariant* other, Direction dir)
+	explicit RMonoVariant(RMonoVariant* other, Direction dir)
 			: flags((other->flags & ~FlagMaskDirection) | FlagIsAlias | dir), alias(other) {}
 
 	void copyFromOther(const Self& other)

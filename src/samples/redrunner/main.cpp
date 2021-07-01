@@ -178,7 +178,7 @@ int main(int argc, char** argv)
 		GetMainCharacterPosition(ctx, x, y);
 
 		char buf[128];
-		sprintf(buf, "Position: %.1f, %.1f", x, y);
+		snprintf(buf, sizeof(buf), "Position: %.1f, %.1f", x, y);
 
 		SetCanvasText(ctx, testTextObj, std::string(buf));
 

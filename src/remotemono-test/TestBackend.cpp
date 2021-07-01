@@ -19,9 +19,35 @@
 
 #include "TestBackend.h"
 
+#ifdef REMOTEMONO_BACKEND_BLACKBONE_ENABLED
+#include "backend/BlackBoneTestBackend.h"
+#endif
 
-std::vector<TestBackend*> TestBackend::supportedBackends;
 
+std::vector<TestBackend*>* TestBackend::supportedBackends;
+
+
+void TestBackend::init()
+{
+	supportedBackends = new std::vector<TestBackend*>();
+
+	supportedBackends->push_back(new BlackBoneTestBackend);
+}
+
+
+void TestBackend::shutdown()
+{
+	for (TestBackend* backend : *supportedBackends) {
+		delete backend;
+	}
+	delete supportedBackends;
+}
+
+
+std::vector<TestBackend*> TestBackend::getSupportedBackends()
+{
+	return *supportedBackends;
+}
 
 
 TestBackend* TestBackend::getDefaultBackend()

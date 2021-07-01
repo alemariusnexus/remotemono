@@ -28,7 +28,12 @@
 class TestBackend
 {
 public:
-	static std::vector<TestBackend*> getSupportedBackends() { return supportedBackends; }
+	virtual ~TestBackend() = default;
+
+	static void init();
+	static void shutdown();
+
+	static std::vector<TestBackend*> getSupportedBackends();
 	static TestBackend* getDefaultBackend();
 
 public:
@@ -44,11 +49,10 @@ protected:
 	TestBackend(const std::string& id, int priority)
 			: id(id), priority(priority)
 	{
-		supportedBackends.push_back(this);
 	}
 
 private:
-	static std::vector<TestBackend*> supportedBackends;
+	static std::vector<TestBackend*>* supportedBackends;
 
 private:
 	std::string id;

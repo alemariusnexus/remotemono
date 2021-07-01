@@ -127,7 +127,7 @@ public:
 	 * RMonoAPIDispatcherBase::ABIEntry from which you can get the RMonoAPIBackend and the ABI itself.
 	 */
 	template <typename FuncT>
-	auto apply(FuncT f) -> decltype(applyInternal<FuncT, 0>(f))
+	auto apply(FuncT f)
 	{
 		return applyInternal<FuncT, 0>(f);
 	}
@@ -144,10 +144,14 @@ private:
 	}
 
 	template<typename ABI, size_t idx = 0>
-	constexpr std::enable_if_t<idx == std::tuple_size_v<ABIEntryTuple>, size_t> abiIndexOf() { static_assert(false); return 0; }
+	constexpr std::enable_if_t<idx == std::tuple_size_v<ABIEntryTuple>, size_t> abiIndexOf()
+	{
+		static_assert(idx != std::tuple_size_v<ABIEntryTuple>);
+		return 0;
+	}
 
 	template <typename FuncT, size_t idx>
-	auto applyInternal(FuncT f) -> decltype(f(std::get<0>(abis)))
+	auto applyInternal(FuncT f)
 	{
 		if constexpr(idx < std::tuple_size_v<ABIEntryTuple>) {
 			if (idx == selectedABIIdx) {

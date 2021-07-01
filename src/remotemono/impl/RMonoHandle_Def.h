@@ -375,15 +375,15 @@ template <
 >
 struct hash<typename remotemono::RMonoHandle<HandleT, deleter, invalidHandle>>
 {
-	typedef typename remotemono::RMonoHandle<HandleT, deleter, invalidHandle> HandleT;
+	typedef typename remotemono::RMonoHandle<HandleT, deleter, invalidHandle> HandleType;
 
-	std::size_t operator()(HandleT const& h) const noexcept
+	std::size_t operator()(HandleType const& h) const noexcept
 	{
 		return hh(*h);
 	}
 
 private:
-	std::hash<typename HandleT::HandleType> hh;
+	std::hash<typename HandleType::HandleType> hh;
 };
 
 

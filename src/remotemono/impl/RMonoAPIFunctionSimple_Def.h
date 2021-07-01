@@ -46,7 +46,7 @@ public:
 public:
 	RMonoAPIFunctionSimple() : process(nullptr), addr(0), f(nullptr) {}
 	RMonoAPIFunctionSimple(backend::RMonoProcess& proc, rmono_funcp addr)
-			: process(&process), addr(addr), f(nullptr)
+			: process(&proc), addr(addr), f(nullptr)
 	{
 		rebuildRemoteFunc();
 	}

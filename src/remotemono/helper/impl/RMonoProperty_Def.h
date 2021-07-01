@@ -135,6 +135,8 @@ public:
 	template <typename... VariantT>
 	inline RMonoObject set(VariantT... args) const;
 
+	std::string name() const { assertValid(); return d->mono->propertyGetName(d->prop); }
+
 private:
 	void assertValid() const
 	{

@@ -58,6 +58,40 @@ TEST(MonoAPIFieldTest, FieldMetadata)
 }
 
 
+TEST(MonoAPIFieldTest, FieldNativeAccess)
+{
+	RMonoAPI& mono = System::getInstance().getMono();
+	backend::RMonoProcess& proc = mono.getProcess();
+
+	auto ass = mono.assemblyLoaded("remotemono-test-target-mono");
+	auto img = mono.assemblyGetImage(ass);
+
+	auto cls = mono.classFromName(img, "", "ClassWithExplicitLayout");
+
+	auto intAt0 = mono.classGetFieldFromName(cls, "IntAt0");
+	auto intAt10 = mono.classGetFieldFromName(cls, "IntAt10");
+	auto intAt15 = mono.classGetFieldFromName(cls, "IntAt15");
+
+	uint32_t intAt0Offs = mono.fieldGetOffset(intAt0);
+	uint32_t intAt10Offs = mono.fieldGetOffset(intAt10);
+	uint32_t intAt15Offs = mono.fieldGetOffset(intAt15);
+
+	auto obj = mono.objectNew(cls).pin();
+	mono.runtimeObjectInit(obj);
+
+	RMonoObjectPtrRaw objPtr = obj.raw();
+	int32_t intAt0Val, intAt10Val, intAt15Val;
+
+	proc.readMemory(objPtr + intAt0Offs, sizeof(int32_t), &intAt0Val);
+	proc.readMemory(objPtr + intAt10Offs, sizeof(int32_t), &intAt10Val);
+	proc.readMemory(objPtr + intAt15Offs, sizeof(int32_t), &intAt15Val);
+
+	EXPECT_EQ(123, intAt0Val);
+	EXPECT_EQ(4567, intAt10Val);
+	EXPECT_EQ(89, intAt15Val);
+}
+
+
 TEST(MonoAPIFieldTest, FieldValueReferenceType)
 {
 	RMonoAPI& mono = System::getInstance().getMono();

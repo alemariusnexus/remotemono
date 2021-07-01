@@ -23,6 +23,7 @@
 
 #include "RMonoAPI_Def.h"
 
+#include <cassert>
 #include "mono/metadata/blob.h"
 #include "mono/metadata/row-indexes.h"
 #include "mono/metadata/tabledefs.h"
@@ -946,6 +947,17 @@ RMonoClassPtr RMonoAPI::getExceptionClass()
 
 	return apid->apply([&](auto& e) {
 		return e.abi.i2p_RMonoClassPtr(e.api.get_exception_class());
+	});
+}
+
+
+RMonoClassPtr RMonoAPI::getEnumClass()
+{
+	checkAttached();
+	REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(get_enum_class);
+
+	return apid->apply([&](auto& e) {
+		return e.abi.i2p_RMonoClassPtr(e.api.get_enum_class());
 	});
 }
 
@@ -2066,6 +2078,26 @@ RMonoObjectPtr RMonoAPI::valueBox(RMonoClassPtr cls, const RMonoVariant& val)
 }
 
 
+template <typename T>
+RMonoObjectPtr RMonoAPI::valueBox(const T& value)
+{
+	RMonoClassPtr cls;
+	if constexpr(std::is_same_v<T, int8_t>) cls = getSByteClass();
+	else if constexpr(std::is_same_v<T, uint8_t>) cls = getByteClass();
+	else if constexpr(std::is_same_v<T, int16_t>) cls = getInt16Class();
+	else if constexpr(std::is_same_v<T, uint16_t>) cls = getUInt16Class();
+	else if constexpr(std::is_same_v<T, int32_t>) cls = getInt32Class();
+	else if constexpr(std::is_same_v<T, uint32_t>) cls = getUInt32Class();
+	else if constexpr(std::is_same_v<T, int64_t>) cls = getInt64Class();
+	else if constexpr(std::is_same_v<T, uint64_t>) cls = getUInt64Class();
+	else if constexpr(std::is_same_v<T, float>) cls = getSingleClass();
+	else if constexpr(std::is_same_v<T, double>) cls = getDoubleClass();
+	else if constexpr(std::is_same_v<T, bool>) cls = getBooleanClass();
+	else static_assert(std::is_same_v<T, void>, "Unsupported template type for valueBox()");
+	return valueBox(cls, RMonoVariant(const_cast<T*>(&value)));
+}
+
+
 RMonoStringPtr RMonoAPI::objectToString(const RMonoVariant& obj, bool catchExceptions)
 {
 	checkAttached();
@@ -2401,7 +2433,8 @@ rmono_voidp RMonoAPI::arrayAddrWithSize(RMonoArrayPtr arr, rmono_int size, rmono
 
 	rmono_voidp addr;
 	apid->apply([&](auto& e) {
-		e.api.array_addr_with_size(RMonoVariant(&addr, RMonoVariant::rawPtr), e.abi.p2i_RMonoArrayPtr(arr),
+		RMonoVariant outVar(&addr, RMonoVariant::rawPtr);
+		e.api.array_addr_with_size(outVar, e.abi.p2i_RMonoArrayPtr(arr),
 				e.abi.p2i_rmono_int(size), e.abi.p2i_rmono_uintptr_t(idx));
 	});
 	return addr;
@@ -2476,13 +2509,15 @@ T RMonoAPI::arrayGet(RMonoArrayPtr arr, rmono_uintptr_t idx)
 		// TODO: What about custom value types? Should probably provide a version with RMonoVariant output parameter instead
 		// of templated return type.
 
+		RMonoVariant outVar(&val);
+
 		// NOTE: Mono's original macros for mono_array_get() and mono_array_set*() directly use sizeof() to determine
 		// the element size, so it seems safe to do the same here, and it's certainly much faster.
 		if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
-			e.api.array_addr_with_size(RMonoVariant(&val), e.abi.p2i_RMonoArrayPtr(arr),
+			e.api.array_addr_with_size(outVar, e.abi.p2i_RMonoArrayPtr(arr),
 					e.abi.p2i_rmono_int((rmono_int) sizeof(typename ABI::IRMonoObjectPtrRaw)), e.abi.p2i_rmono_uintptr_t(idx));
 		} else {
-			e.api.array_addr_with_size(RMonoVariant(&val), e.abi.p2i_RMonoArrayPtr(arr),
+			e.api.array_addr_with_size(outVar, e.abi.p2i_RMonoArrayPtr(arr),
 					e.abi.p2i_rmono_int((rmono_int) sizeof(T)), e.abi.p2i_rmono_uintptr_t(idx));
 		}
 	});
@@ -2846,6 +2881,9 @@ std::vector<T> RMonoAPI::arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rm
 		end = arrLen;
 	}
 
+	backend::RMonoMemBlock block;
+	rmono_uintptr_t numElems;
+
 	apid->apply([&](auto& e) {
 		typedef decltype(e.abi) ABI;
 
@@ -2861,7 +2899,7 @@ std::vector<T> RMonoAPI::arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rm
 		}
 
 		rmono_uintptr_t blockSize = static_cast<rmono_uintptr_t>(elemSize)*(end-start);
-		backend::RMonoMemBlock block = std::move(backend::RMonoMemBlock::alloc(&process, static_cast<size_t>(blockSize)));
+		block = std::move(backend::RMonoMemBlock::alloc(&process, static_cast<size_t>(blockSize)));
 
 		auto actualEnd = e.abi.i2p_rmono_uintptr_t(e.api.rmono_array_slice (
 				e.abi.p2i_rmono_voidp(*block),
@@ -2871,9 +2909,13 @@ std::vector<T> RMonoAPI::arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rm
 				argElemSize
 				));
 
-		rmono_uintptr_t numElems = actualEnd - start;
+		numElems = actualEnd - start;
+	});
 
-		if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
+	if constexpr(std::is_base_of_v<RMonoObjectHandleTag, T>) {
+		apid->apply([&](auto& e) {
+			typedef decltype(e.abi) ABI;
+
 			out.reserve(static_cast<size_t>(numElems));
 
 			typename ABI::irmono_gchandle* localBlock = new typename ABI::irmono_gchandle[static_cast<size_t>(numElems)];
@@ -2884,26 +2926,24 @@ std::vector<T> RMonoAPI::arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rm
 			}
 
 			delete[] localBlock;
-		} else {
-			if constexpr(std::is_same_v<T, bool>) {
-				// std::vector<bool> may actually store its elements in BITS, so we can't use data() to access it.
-				// This actually seems to be standards compliant. Ridiculous.
-				out.reserve(static_cast<size_t>(numElems));
+		});
+	} else if constexpr(std::is_same_v<T, bool>) {
+		// std::vector<bool> may actually store its elements in BITS, so we can't use data() to access it.
+		// This actually seems to be standards compliant. Ridiculous.
+		out.reserve(static_cast<size_t>(numElems));
 
-				bool* localBlock = new bool[static_cast<size_t>(numElems)];
-				block.read(0, static_cast<size_t>(numElems*sizeof(bool)), localBlock);
+		bool* localBlock = new bool[static_cast<size_t>(numElems)];
+		block.read(0, static_cast<size_t>(numElems*sizeof(bool)), localBlock);
 
-				for (rmono_uintptr_t i = 0 ; i < numElems ; i++) {
-					out.push_back(localBlock[i]);
-				}
-
-				delete[] localBlock;
-			} else {
-				out.resize(static_cast<size_t>(numElems));
-				block.read(0, static_cast<size_t>(numElems*sizeof(T)), out.data());
-			}
+		for (rmono_uintptr_t i = 0 ; i < numElems ; i++) {
+			out.push_back(localBlock[i]);
 		}
-	});
+
+		delete[] localBlock;
+	} else {
+		out.resize(static_cast<size_t>(numElems));
+		block.read(0, static_cast<size_t>(numElems*sizeof(T)), out.data());
+	}
 
 	return out;
 }
@@ -2934,6 +2974,59 @@ RMonoArrayPtr RMonoAPI::arrayFromVector(RMonoClassPtr cls, const std::vector<T>&
 {
 	return arrayFromVector(domainGet(), cls, vec);
 }
+
+
+std::vector<std::string> RMonoAPI::enumGetNames(RMonoClassPtr cls)
+{
+	if (!cls) throw RMonoException("Invalid class");
+
+	std::vector<std::string> names;
+	RMonoClassPtr enumCls = getEnumClass();
+	RMonoMethodPtr getNamesMethod = classGetMethodFromName(enumCls, "GetNames", 1);
+	RMonoObjectPtr namesArr = runtimeInvoke(getNamesMethod, nullptr, {typeGetObject(classGetType(cls))});
+	for (RMonoObjectPtr nameObj : arrayAsVector<RMonoObjectPtr>(namesArr)) {
+		names.push_back(stringToUTF8(nameObj));
+	}
+	return names;
+}
+
+
+template <typename T>
+std::vector<T> RMonoAPI::enumGetValues(RMonoClassPtr cls)
+{
+	if (!cls) throw RMonoException("Invalid class");
+
+	RMonoClassPtr enumCls = getEnumClass();
+	RMonoMethodPtr getValuesMethod = classGetMethodFromName(enumCls, "GetValues", 1);
+	RMonoObjectPtr valuesArr = runtimeInvoke(getValuesMethod, nullptr, {typeGetObject(classGetType(cls))});
+	return arrayAsVector<T>(valuesArr);
+}
+
+
+template <typename T>
+T RMonoAPI::enumValueByName(RMonoClassPtr cls, const std::string_view& name, bool ignoreCase)
+{
+	if (!cls) throw RMonoException("Invalid class");
+
+	RMonoClassPtr enumCls = getEnumClass();
+	RMonoMethodPtr parseMethod = classGetMethodFromName(enumCls, "Parse", 3);
+	RMonoObjectPtr valObj = runtimeInvoke(parseMethod, nullptr, {typeGetObject(classGetType(cls)), stringNew(name), ignoreCase});
+	return objectUnbox<T>(valObj);
+}
+
+
+// TODO: Why the FUCK does this throw a NullReferenceException?????
+/*template <typename T>
+std::string RMonoAPI::enumNameByValue(RMonoClassPtr cls, T value)
+{
+	if (!cls) throw RMonoException("Invalid class");
+
+	RMonoClassPtr enumCls = getEnumClass();
+	RMonoMethodPtr getNameMethod = classGetMethodFromName(enumCls, "GetName", 2);
+	RMonoObjectPtr boxedValue = valueBox<T>(value);
+	auto nameObj = runtimeInvoke(getNameMethod, nullptr, {typeGetObject(classGetType(cls)), boxedValue});
+	return stringToUTF8(nameObj);
+}*/
 
 
 

@@ -59,4 +59,34 @@ RMonoMethod RMonoObject::methodDesc(const std::string& desc, bool includeNamespa
 }
 
 
+template <typename T>
+std::vector<T> RMonoObject::arrayAsVector() const
+{
+	assertValid();
+
+	if constexpr(std::is_same_v<RMonoObject, T>) {
+		auto ptrs = d->mono->arrayAsVector<RMonoObjectPtr>(**this);
+
+		// TODO: Try to get the element classes without having to do an RPC for each one.
+		std::vector<RMonoObject> objs;
+		for (auto ptr : ptrs) {
+			objs.emplace_back(d->ctx, ptr);
+		}
+
+		return objs;
+	} else {
+		return d->mono->arrayAsVector<T>(**this);
+	}
+}
+
+
+RMonoObject RMonoObject::pin() const
+{
+	if (!isValid()) {
+		return *this;
+	}
+	return RMonoObject(d->ctx, d->obj.pin(), d->cls);
+}
+
+
 }

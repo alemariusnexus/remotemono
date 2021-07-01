@@ -16,6 +16,7 @@
 # along with RemoteMono.  If not, see <https://www.gnu.org/licenses/>. 
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
+SET(CMAKE_USER_MAKE_RULES_OVERRIDE  "InitFlags.cmake")
 PROJECT(remotemono C CXX)
 
 INCLUDE(CPack)

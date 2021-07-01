@@ -21,7 +21,7 @@
 
 #include "../../../config.h"
 
-#include "../RMonoTypes.h"
+#include "../../RMonoTypes.h"
 #include "RMonoBlackBoneBackend.h"
 
 #include <BlackBone/Process/Process.h>
@@ -56,10 +56,11 @@ public:
 
 	RetT operator()(ArgsT... args)
 	{
+		typename RemoteFunc::CallArguments cargs(args...);
 		if constexpr(!std::is_same_v<RetT, void>) {
-			return *f.Call(typename RemoteFunc::CallArguments(args...), process.remote().getWorker());
+			return *f.Call(cargs, process.remote().getWorker());
 		} else {
-			f.Call(typename RemoteFunc::CallArguments(args...), process.remote().getWorker());
+			f.Call(cargs, process.remote().getWorker());
 		}
 	}
 

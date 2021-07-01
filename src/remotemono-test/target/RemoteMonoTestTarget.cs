@@ -185,9 +185,9 @@ class RemoteMonoNamespacedClass
 [StructLayout(LayoutKind.Explicit, Size=20)]
 public class ClassWithExplicitLayout
 {
-	[FieldOffset(0)] public int IntAt0;
-	[FieldOffset(10)] public int IntAt10;
-	[FieldOffset(15)] public int IntAt15;
+	[FieldOffset(0)] public int IntAt0 = 123;
+	[FieldOffset(10)] public int IntAt10 = 4567;
+	[FieldOffset(15)] public int IntAt15 = 89;
 }
 
 
@@ -426,4 +426,34 @@ public class GCFreeTestObj
 	{
 		GCFreeTestCounter.refcount--;
 	}
+}
+
+
+public enum SomeSimpleEnum1
+{
+	Never,
+	Gonna,
+	Give,
+	You,
+	Up
+}
+
+public enum SomeSimpleEnum2
+{
+	Never = -31,
+	Gonna = 415,
+	Let = 9,
+	You = 2653,
+	Down = -5
+}
+
+public enum SimpleByteEnum : byte
+{
+	Never = 1,
+	Gonna = 2,
+	Run = 3,
+	Around = 5,
+	And = 8,
+	Desert = 13,
+	You = 21
 }

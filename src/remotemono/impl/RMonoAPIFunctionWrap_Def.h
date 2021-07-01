@@ -215,6 +215,9 @@ private:
 	};
 
 public:
+	typedef RMonoAPIFunctionWrap<CommonT, ABI, RetT, ArgsT...> Self;
+
+public:
 	template <size_t idx = 0>
 	constexpr static std::enable_if_t<idx < std::tuple_size_v<DefArgsTuple>, bool> needsWrapFuncArg()
 	{
@@ -266,7 +269,7 @@ public:
 protected:
 	void resetWrap()
 	{
-		wrapFunc.reset();
+		this->wrapFunc.reset();
 	}
 
 private:

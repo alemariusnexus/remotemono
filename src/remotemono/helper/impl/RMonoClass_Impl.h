@@ -35,33 +35,74 @@ namespace remotemono
 {
 
 
+RMonoClass::Data::Data(RMonoHelperContext* ctx, RMonoClassPtr cls)
+		: ctx(ctx), mono(ctx->getMonoAPI()), cls(cls)
+{
+	fieldsByName = new std::unordered_map<std::string, RMonoField>;
+	propsByName = new std::unordered_map<std::string, RMonoProperty>;
+	methodsByName = new std::unordered_map<MethodNameWithParamCount, RMonoMethod, MethodNameWithParamCountHash>;
+	methodsByDesc = new std::unordered_map<MethodDesc, RMonoMethod, MethodDescHash>;
+}
+
+
+RMonoClass::Data::~Data()
+{
+	delete fieldsByName;
+	delete propsByName;
+	delete methodsByName;
+	delete methodsByDesc;
+}
+
+
 RMonoField RMonoClass::field(const std::string& name) const
 {
 	assertValid();
-	auto it = d->fieldsByName.find(name);
-	if (it != d->fieldsByName.end()) {
+	auto it = d->fieldsByName->find(name);
+	if (it != d->fieldsByName->end()) {
 		return it->second;
 	}
 	RMonoField f(d->ctx, d->mono->classGetFieldFromName(d->cls, name), *this);
 	if (f) {
-		d->fieldsByName.insert(std::pair<std::string, RMonoField>(name, f));
+		d->fieldsByName->insert(std::pair<std::string, RMonoField>(name, f));
 	}
 	return f;
+}
+
+
+std::vector<RMonoField> RMonoClass::fields() const
+{
+	assertValid();
+	std::vector<RMonoField> fields;
+	for (RMonoClassFieldPtr fptr : d->mono->classGetFields(d->cls)) {
+		fields.emplace_back(d->ctx, fptr, *this);
+	}
+	return fields;
 }
 
 
 RMonoProperty RMonoClass::property(const std::string& name) const
 {
 	assertValid();
-	auto it = d->propsByName.find(name);
-	if (it != d->propsByName.end()) {
+	auto it = d->propsByName->find(name);
+	if (it != d->propsByName->end()) {
 		return it->second;
 	}
 	RMonoProperty p(d->ctx, d->mono->classGetPropertyFromName(d->cls, name), *this);
 	if (p) {
-		d->propsByName.insert(std::pair<std::string, RMonoProperty>(name, p));
+		d->propsByName->insert(std::pair<std::string, RMonoProperty>(name, p));
 	}
 	return p;
+}
+
+
+std::vector<RMonoProperty> RMonoClass::properties() const
+{
+	assertValid();
+	std::vector<RMonoProperty> props;
+	for (RMonoPropertyPtr pptr : d->mono->classGetProperties(d->cls)) {
+		props.emplace_back(d->ctx, pptr, *this);
+	}
+	return props;
 }
 
 
@@ -69,13 +110,13 @@ RMonoMethod RMonoClass::method(const std::string& name, int32_t paramCount) cons
 {
 	assertValid();
 	MethodNameWithParamCount key(name, paramCount);
-	auto it = d->methodsByName.find(key);
-	if (it != d->methodsByName.end()) {
+	auto it = d->methodsByName->find(key);
+	if (it != d->methodsByName->end()) {
 		return it->second;
 	}
 	RMonoMethod m(d->ctx, d->mono->classGetMethodFromName(d->cls, name, paramCount), *this);
 	if (m) {
-		d->methodsByName.insert(std::pair<MethodNameWithParamCount, RMonoMethod>(key, m));
+		d->methodsByName->insert(std::pair<MethodNameWithParamCount, RMonoMethod>(key, m));
 	}
 	return m;
 }
@@ -85,15 +126,26 @@ RMonoMethod RMonoClass::methodDesc(const std::string& desc, bool includeNamespac
 {
 	assertValid();
 	MethodDesc key(desc, includeNamespace);
-	auto it = d->methodsByDesc.find(key);
-	if (it != d->methodsByDesc.end()) {
+	auto it = d->methodsByDesc->find(key);
+	if (it != d->methodsByDesc->end()) {
 		return it->second;
 	}
 	RMonoMethod m(d->ctx, d->mono->methodDescSearchInClass(desc, includeNamespace, d->cls), *this);
 	if (m) {
-		d->methodsByDesc.insert(std::pair<MethodDesc, RMonoMethod>(key, m));
+		d->methodsByDesc->insert(std::pair<MethodDesc, RMonoMethod>(key, m));
 	}
 	return m;
+}
+
+
+std::vector<RMonoMethod> RMonoClass::methods() const
+{
+	assertValid();
+	std::vector<RMonoMethod> methods;
+	for (RMonoMethodPtr mptr : d->mono->classGetMethods(d->cls)) {
+		methods.emplace_back(d->ctx, mptr, *this);
+	}
+	return methods;
 }
 
 
