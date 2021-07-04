@@ -16,7 +16,7 @@
 # along with RemoteMono.  If not, see <https://www.gnu.org/licenses/>. 
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
-SET(CMAKE_USER_MAKE_RULES_OVERRIDE  "InitFlags.cmake")
+SET(CMAKE_USER_MAKE_RULES_OVERRIDE  "${CMAKE_CURRENT_SOURCE_DIR}/InitFlags.cmake")
 PROJECT(remotemono C CXX)
 
 INCLUDE(CPack)
@@ -24,6 +24,17 @@ INCLUDE(CPack)
 SET(REMOTEMONO_TEST_BUILD OFF CACHE BOOL "Whether you want to build the unit tests")
 SET(REMOTEMONO_SAMPLES_BUILD OFF CACHE BOOL "Whether you want to build the example projects")
 SET(REMOTEMONO_DOCS_BUILD OFF CACHE BOOL "Whether you want to build the documentation")
+
+SET(REMOTEMONO_BACKEND_ENABLE_BLACKBONE ON CACHE BOOL "Whether to enable the BlackBone backend for RemoteMono")
+
+LIST(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+IF(REMOTEMONO_BACKEND_ENABLE_BLACKBONE)
+	FIND_PACKAGE(BlackBone REQUIRED)
+	IF(NOT MSVC)
+		STRING(APPEND CMAKE_CXX_STANDARD_LIBRARIES " -lshlwapi")
+	ENDIF()
+ENDIF()
 
 IF(REMOTEMONO_TEST_BUILD)
     ADD_SUBDIRECTORY(remotemono-test)
