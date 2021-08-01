@@ -37,6 +37,7 @@ TEST(MonoAPIClassTest, ClassFromName)
 
 	auto cls = mono.classFromName(img, "", "RemoteMonoDerived");
 	EXPECT_TRUE(cls);
+	EXPECT_EQ(mono.classGetImage(cls), img);
 
 	cls = mono.classFromName(img, "remotemono", "RemoteMonoNamespacedClass");
 	EXPECT_TRUE(cls);

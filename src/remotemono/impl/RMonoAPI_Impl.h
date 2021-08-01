@@ -1273,6 +1273,18 @@ int32_t RMonoAPI::classValueSize(RMonoClassPtr cls, uint32_t* align)
 }
 
 
+RMonoImagePtr RMonoAPI::classGetImage(RMonoClassPtr cls)
+{
+    checkAttached();
+    REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(class_get_image);
+    if (!cls) throw RMonoException("Invalid class");
+
+    return apid->apply([&](auto& e) {
+        return e.abi.i2p_RMonoImagePtr(e.api.class_get_image(e.abi.p2i_RMonoClassPtr(cls)));
+    });
+}
+
+
 
 RMonoReflectionTypePtr RMonoAPI::typeGetObject(RMonoDomainPtr domain, RMonoTypePtr type)
 {

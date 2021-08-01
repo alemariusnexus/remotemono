@@ -267,7 +267,8 @@ public:
 	REMOTEMONO_API(	0,	148,class_data_size,				false,	uint32_t,					IRMonoClassPtr												)
 	REMOTEMONO_API(	0,	149,class_instance_size,			false,	uint32_t,					IRMonoClassPtr												)
 	REMOTEMONO_API(	0,	150,class_value_size,				true,	int32_t,					IRMonoClassPtr, ParamOut<uint32_t>							)
-	REMOTEMONO_API_SKIP(0, 151, 169)
+    REMOTEMONO_API(	0,	151,class_get_image,				false,	IRMonoImagePtr,				IRMonoClassPtr                  							)
+	REMOTEMONO_API_SKIP(0, 152, 169)
 
 	REMOTEMONO_API(	0,	170,type_get_object,				false,	IRMonoReflectionTypePtr,	IRMonoDomainPtr, IRMonoTypePtr								)
 	REMOTEMONO_API(	0,	171,type_get_name,					false,	ReturnOwn<string>,			IRMonoTypePtr												)

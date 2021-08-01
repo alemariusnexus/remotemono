@@ -122,6 +122,7 @@ public:
 	rmono_funcp compile() const { assertValid(); return d->mono->compileMethod(d->method); }
 
 	std::string name() const { assertValid(); return d->mono->methodGetName(d->method); }
+	std::string fullName(bool signature = true) const { assertValid(); return d->mono->methodFullName(d->method, signature); }
 
 private:
 	void assertValid() const

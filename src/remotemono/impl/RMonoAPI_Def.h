@@ -224,6 +224,7 @@ public:
 	inline uint32_t							classDataSize(RMonoClassPtr cls);
 	inline uint32_t							classInstanceSize(RMonoClassPtr cls);
 	inline int32_t							classValueSize(RMonoClassPtr cls, uint32_t* align = nullptr);
+    inline RMonoImagePtr					classGetImage(RMonoClassPtr cls);
 	///@}
 
 	///@name Mono API - Types
