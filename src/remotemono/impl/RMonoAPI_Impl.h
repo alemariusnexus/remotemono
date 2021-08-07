@@ -407,6 +407,39 @@ void RMonoAPI::threadDetach(RMonoThreadPtr thread)
 
 
 
+RMonoAssemblyPtr RMonoAPI::assemblyOpen(const std::string_view& filename, int32_t* status)
+{
+    checkAttached();
+    REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_open);
+
+    return apid->apply([&](auto& e) {
+        int32_t istatus;
+        auto ass = e.abi.i2p_RMonoAssemblyPtr(e.api.assembly_open(filename, &istatus));
+        if (status) {
+            *status = istatus;
+        }
+        return ass;
+    });
+}
+
+
+RMonoAssemblyPtr RMonoAPI::assemblyOpenFull(const std::string_view& filename, int32_t* status, bool refonly)
+{
+    checkAttached();
+    REMOTEMONO_RMONOAPI_CHECK_SUPPORTED(assembly_open_full);
+
+    return apid->apply([&](auto& e) {
+        int32_t istatus;
+        auto ass = e.abi.i2p_RMonoAssemblyPtr(e.api.assembly_open_full(filename, &istatus,
+                e.abi.p2i_rmono_bool(refonly)));
+        if (status) {
+            *status = istatus;
+        }
+        return ass;
+    });
+}
+
+
 void RMonoAPI::assemblyClose(RMonoAssemblyPtr assembly)
 {
 	checkAttached();
@@ -2884,13 +2917,13 @@ std::vector<T> RMonoAPI::arraySlice(RMonoArrayPtr arr, rmono_uintptr_t start, rm
 	if (!arr) {
 		throw RMonoException("Invalid array");
 	}
-	if (end <= start) {
-		return out;
-	}
 
 	rmono_uintptr_t arrLen = arrayLength(arr);
 	if (end > arrLen) {
 		end = arrLen;
+	}
+	if (end <= start) {
+	    return out;
 	}
 
 	backend::RMonoMemBlock block;

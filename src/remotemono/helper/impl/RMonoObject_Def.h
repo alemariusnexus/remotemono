@@ -81,6 +81,8 @@ public:
 	bool operator==(const RMonoObject& other) const { return (d && other.d) ? (d->obj == other.d->obj) : true; }
 	bool operator!=(const RMonoObject& other) const { return !(*this == other); }
 
+	void reset() { d.reset(); }
+
 	RMonoObjectPtr getWrappedMonoObjectPtr() const override { return d ? d->obj : RMonoObjectPtr(); }
 
 	RMonoHelperContext* getContext() const { return d ? d->ctx : nullptr; }

@@ -45,8 +45,8 @@ void BlackBoneTestBackend::attachProcessByExecutablePath(std::string path)
 
 	NTSTATUS status = bbProc.CreateAndAttach(wTargetExePath.data(), false, true, L"", wTargetExeDirPath.empty() ? nullptr : wTargetExeDirPath.data());
 	if (!NT_SUCCESS(status)) {
-		char statusStr[64];
-		sprintf(statusStr, "%lX", status);
+		char statusStr[32];
+		snprintf(statusStr, sizeof(statusStr), "%lX", status);
 		throw TestEnvException(std::string("Error creating and attaching to target executable: ").append(statusStr));
 	}
 
@@ -60,8 +60,8 @@ void BlackBoneTestBackend::attachProcessByPID(DWORD pid)
 {
 	NTSTATUS status = bbProc.Attach(pid);
 	if (!NT_SUCCESS(status)) {
-		char statusStr[64];
-		sprintf(statusStr, "%lX", status);
+		char statusStr[32];
+		snprintf(statusStr, sizeof(statusStr), "%lX", status);
 		throw TestEnvException(std::string("Error attaching to target process: ").append(statusStr));
 	}
 
@@ -82,8 +82,8 @@ void BlackBoneTestBackend::attachProcessByExecutableFilename(std::string name)
 
 	NTSTATUS status = bbProc.Attach(pids[0]);
 	if (!NT_SUCCESS(status)) {
-		char statusStr[64];
-		sprintf(statusStr, "%lX", status);
+		char statusStr[32];
+		snprintf(statusStr, sizeof(statusStr), "%lX", status);
 		throw TestEnvException(std::string("Error attaching to target process: ").append(statusStr));
 	}
 

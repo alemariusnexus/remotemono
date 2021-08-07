@@ -139,6 +139,8 @@ public:
 
 	///@name Mono API - Assemblies
 	///@{
+	inline RMonoAssemblyPtr                 assemblyOpen(const std::string_view& filename, int32_t* status);
+    inline RMonoAssemblyPtr                 assemblyOpenFull(const std::string_view& filename, int32_t* status, bool refonly);
 	inline void								assemblyClose(RMonoAssemblyPtr assembly);
 	inline std::vector<RMonoAssemblyPtr>	assemblyList();
 	inline RMonoImagePtr					assemblyGetImage(RMonoAssemblyPtr assembly);

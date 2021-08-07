@@ -109,7 +109,9 @@ public:
 	{
 		auto res = ::blackbone::MemBlock::Allocate(process->memory(), size, 0, static_cast<DWORD>(prot), false);
 		if (!res) {
-			throw RMonoException("Error allocating remote memory");
+		    char hexStatus[32];
+		    snprintf(hexStatus, sizeof(hexStatus), "%llX", (long long) res.status);
+			throw RMonoException(std::string("Error allocating remote memory: ").append(hexStatus));
 		}
 		return static_cast<rmono_voidp>(res->ptr());
 	}

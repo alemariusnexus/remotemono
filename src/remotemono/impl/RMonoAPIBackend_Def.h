@@ -194,21 +194,23 @@ public:
 	REMOTEMONO_API(	0,	41,	thread_detach,					true,	void,						IRMonoThreadPtr												)
 	REMOTEMONO_API_SKIP(0, 42, 49)
 
-	REMOTEMONO_API(	0,	50,	assembly_close,					false,	void,						IRMonoAssemblyPtr											)
-	REMOTEMONO_API(	0,	51,	assembly_foreach,				false,	void,						irmono_funcp, irmono_voidp									)
-	REMOTEMONO_API(	0,	52,	assembly_get_image,				false,	IRMonoImagePtr,				IRMonoAssemblyPtr											)
-	REMOTEMONO_API(	0,	53,	assembly_get_name,				false,	IRMonoAssemblyNamePtr,		IRMonoAssemblyPtr											)
-	REMOTEMONO_API(	0,	54,	assembly_name_new,				false,	ReturnOwn<IRMonoAssemblyNamePtr>,
+	REMOTEMONO_API( 0,  50, assembly_open,                  false,  IRMonoAssemblyPtr,          string_view, ParamOut<int32_t>                              )
+    REMOTEMONO_API( 0,  51, assembly_open_full,             false,  IRMonoAssemblyPtr,          string_view, ParamOut<int32_t>, irmono_bool                 )
+	REMOTEMONO_API(	0,	52,	assembly_close,					false,	void,						IRMonoAssemblyPtr											)
+	REMOTEMONO_API(	0,	53,	assembly_foreach,				false,	void,						irmono_funcp, irmono_voidp									)
+	REMOTEMONO_API(	0,	54,	assembly_get_image,				false,	IRMonoImagePtr,				IRMonoAssemblyPtr											)
+	REMOTEMONO_API(	0,	55,	assembly_get_name,				false,	IRMonoAssemblyNamePtr,		IRMonoAssemblyPtr											)
+	REMOTEMONO_API(	0,	56,	assembly_name_new,				false,	ReturnOwn<IRMonoAssemblyNamePtr>,
 																								string_view													)
-	REMOTEMONO_API(	0,	55,	assembly_name_parse,			false,	irmono_bool,				string_view, IRMonoAssemblyNamePtr							)
-	REMOTEMONO_API(	0,	56,	assembly_name_free,				false,	void,						IRMonoAssemblyNamePtrRaw									)
-	REMOTEMONO_API(	0,	57,	assembly_name_get_name,			false,	std::string,				IRMonoAssemblyNamePtr										)
-	REMOTEMONO_API(	0,	58,	assembly_name_get_culture,		false,	std::string,				IRMonoAssemblyNamePtr										)
-	REMOTEMONO_API(	0,	59,	assembly_name_get_version,		false,	uint16_t,					IRMonoAssemblyNamePtr, ParamOut<uint16_t>,
+	REMOTEMONO_API(	0,	57,	assembly_name_parse,			false,	irmono_bool,				string_view, IRMonoAssemblyNamePtr							)
+	REMOTEMONO_API(	0,	58,	assembly_name_free,				false,	void,						IRMonoAssemblyNamePtrRaw									)
+	REMOTEMONO_API(	0,	59,	assembly_name_get_name,			false,	std::string,				IRMonoAssemblyNamePtr										)
+	REMOTEMONO_API(	0,	60,	assembly_name_get_culture,		false,	std::string,				IRMonoAssemblyNamePtr										)
+	REMOTEMONO_API(	0,	61,	assembly_name_get_version,		false,	uint16_t,					IRMonoAssemblyNamePtr, ParamOut<uint16_t>,
 																								ParamOut<uint16_t>, ParamOut<uint16_t>						)
-	REMOTEMONO_API(	0,	60,	stringify_assembly_name,		false,	ReturnOwn<string>,			IRMonoAssemblyNamePtr										)
-	REMOTEMONO_API(	0,	61,	assembly_loaded,				false,	IRMonoAssemblyPtr,			IRMonoAssemblyNamePtr										)
-	REMOTEMONO_API_SKIP(0, 62, 69)
+	REMOTEMONO_API(	0,	62,	stringify_assembly_name,		false,	ReturnOwn<string>,			IRMonoAssemblyNamePtr										)
+	REMOTEMONO_API(	0,	63,	assembly_loaded,				false,	IRMonoAssemblyPtr,			IRMonoAssemblyNamePtr										)
+	REMOTEMONO_API_SKIP(0, 64, 69)
 
 	REMOTEMONO_API(	0,	70,	image_get_name,					false,	string,						IRMonoImagePtr												)
 	REMOTEMONO_API(	0,	71,	image_get_filename,				false,	string,						IRMonoImagePtr												)
