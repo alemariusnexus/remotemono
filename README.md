@@ -60,7 +60,7 @@ The sample project now provides two implementations of the same code: One that j
 API Documentation
 -----------------
 
-You can find the API documentation [here](https://alemariusnexus.com/remotemono/doc/), although that may not always be the latest version. Note that it is of limited use for many of RemoteMono's internals, since Doxygen isn't capable of parsing some of the template stuff correctly. It's best to look at the sources directly instead.
+You can find the API documentation [here](https://dlerch.de/remotemono/doc/), although that may not always be the latest version. Note that it is of limited use for many of RemoteMono's internals, since Doxygen isn't capable of parsing some of the template stuff correctly. It's best to look at the sources directly instead.
 
 Features
 --------
